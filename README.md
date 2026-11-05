@@ -107,7 +107,7 @@ VRChat とは関係のない、非公式のツールです。
 JRF ( http://jrf.cocolog-nifty.com/statuses , Twitter (X): @jion_rockford )
 AI
 
-Claude Opus 5.5 がほとんどを書いた。
+Claude Opus 5.5 がほとんどを書きました。
 
 ## ライセンス
 
