@@ -1,0 +1,10 @@
+# Unity が作るもの(D:\Unity\OscPoserApp の側にできる)
+Library/
+Temp/
+Logs/
+UserSettings/
+obj/
+Build/
+*.csproj
+*.sln
+build.log
