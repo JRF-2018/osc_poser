@@ -98,6 +98,15 @@ To send: set `OscPoser/Val` to a value (-1 to 1) → wait a little → set `OscP
 | 97 | (unused) | |
 | 98 / 99 / 100 | Body yaw / pitch / roll, in Unity's YXZ order | ±180° / ±180° / ±90° |
 
+## Earlier tools
+
+There are earlier tools for giving your avatar free poses in desktop VRChat, using OSC and other means (I learned about them after publishing OscPoser). If you want to build poses from scratch, please check them out too.
+
+- ["ポーズ送り" (Pose Sender)](https://booth.pm/ja/items/8715878) by negilemon
+- [VRChat Desktop Pose OSC Tool (VRCDP)](https://booth.pm/ja/items/8837110) by RIOKUN
+
+OscPoser is a small tool for making your avatar take poses from .anim files you already have, for photos.
+
 ## Building from source (for developers)
 
 - `unity/`: an editor script that builds the prefab (`Assets/OscPoser`). Create an Avatar project with VCC (or ALCOM, etc.), install Modular Avatar, copy `unity/Assets/OscPoserDev` into its `Assets`, and run Tools → OscPoser → Build. Tools → OscPoser → Export unitypackage writes the unitypackage.

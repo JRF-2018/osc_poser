@@ -98,6 +98,15 @@ Cluster 用の [OSCPoser(ymchn さん)](https://github.com/ymchn/OSCPoser)とは
 | 97 | (欠番) | |
 | 98 / 99 / 100 | 体の向き(Yaw)/ 前傾(Pitch)/ 横傾(Roll)。Unity の YXZ の順 | ±180 / ±180 / ±90 度 |
 
+## 先行するツール
+
+デスクトップの VRChat で、OSC などを使ってアバターに自由なポーズをとらせる仕組みには、次の先駆者があります(私は OscPoser を公開したあとで知りました)。ポーズを一から作りたい方などは、こちらもぜひご覧ください。
+
+- [ポーズ送り](https://booth.pm/ja/items/8715878)(negilemon さん)
+- [VRChat デスクトップポーズ OSC ツール(VRCDP)](https://booth.pm/ja/items/8837110)(RIOKUN さん)
+
+OscPoser は、手持ちの .anim のポーズを撮影でとらせるための、小さな道具です。
+
 ## ソースから作る(開発者向け)
 
 - `unity/`: prefab(`Assets/OscPoser`)を作るエディターのスクリプト。VCC などで Avatar のプロジェクトを作って Modular Avatar を入れ、`unity/Assets/OscPoserDev` をその `Assets` に入れて、メニューの Tools → OscPoser → Build で作ります。Tools → OscPoser → Export unitypackage で unitypackage を書き出します。
