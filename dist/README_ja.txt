@@ -13,7 +13,7 @@ Cluster 用の OSCPoser(ymchn さん)とは、名前が似ていますが別の�
   OscPoser_{VERSION}.unitypackage … アバターに入れる prefab(Modular Avatar 用)
 
 ■ 入れ方
-  1. アバターの Unity プロジェクトに、Modular Avatar を VCC で入れる。
+  1. アバターの Unity プロジェクトに、Modular Avatar を VCC(ALCOM など)で入れる。
   2. OscPoser_{VERSION}.unitypackage を Unity に入れる。
   3. Assets/OscPoser/OscPoser(prefab)を、ヒエラルキーでアバターの直下にドラッグする。
   4. いつもどおりアップロードする。

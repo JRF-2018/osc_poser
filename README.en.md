@@ -25,7 +25,7 @@ It is also unrelated to [OSCPoser by ymchn](https://github.com/ymchn/OSCPoser), 
 
 - Windows 10 / 11 (64-bit). The app is for Windows.
 - VRChat (PC). I have tested it in desktop mode.
-- **Modular Avatar** in your avatar's Unity project (Unity 2022.3, VRChat SDK3 Avatars). Install it with VCC.
+- **Modular Avatar** in your avatar's Unity project (Unity 2022.3, VRChat SDK3 Avatars). Install it with VCC (or ALCOM, etc.).
 - A VRM file with the same body as your avatar (for the app's preview, for example one exported from VRoid Studio). You can send poses without it, but you can't see them while choosing.
 - Humanoid animation .anim files (text format). The ones in your Unity project or in assets work as they are. Animations inside FBX files can't be read.
 
@@ -35,7 +35,7 @@ Download the zip from [Releases](https://github.com/JRF-2018/osc_poser/releases)
 
 ![Drop the prefab under your avatar](docs/images/02_install.jpg)
 
-1. Install Modular Avatar into your avatar's Unity project with VCC.
+1. Install Modular Avatar into your avatar's Unity project with VCC (or ALCOM, etc.).
 2. Import `OscPoser_x.y.z.unitypackage` from the zip into Unity (drag it in, or use Assets → Import Package → Custom Package).
 3. In the Hierarchy, drag `Assets/OscPoser/OscPoser` (the prefab) onto your avatar so it is directly under the avatar.
 4. Upload as usual.
@@ -100,7 +100,7 @@ To send: set `OscPoser/Val` to a value (-1 to 1) → wait a little → set `OscP
 
 ## Building from source (for developers)
 
-- `unity/`: an editor script that builds the prefab (`Assets/OscPoser`). Create an Avatar project with VCC, install Modular Avatar, copy `unity/Assets/OscPoserDev` into its `Assets`, and run Tools → OscPoser → Build. Tools → OscPoser → Export unitypackage writes the unitypackage.
+- `unity/`: an editor script that builds the prefab (`Assets/OscPoser`). Create an Avatar project with VCC (or ALCOM, etc.), install Modular Avatar, copy `unity/Assets/OscPoserDev` into its `Assets`, and run Tools → OscPoser → Build. Tools → OscPoser → Export unitypackage writes the unitypackage.
 - `app/`: the Unity project for the app (Unity 2022.3.22f1, UniVRM 0.128.1). `app/build.ps1` builds it in batch mode (the output folder is `$Out` in the script).
 
 ## Author

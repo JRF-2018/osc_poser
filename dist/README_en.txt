@@ -13,7 +13,7 @@ Full documentation: https://github.com/JRF-2018/osc_poser
   OscPoser_{VERSION}.unitypackage ... the prefab for your avatar (for Modular Avatar)
 
 * Install
-  1. Install Modular Avatar into your avatar's Unity project with VCC.
+  1. Install Modular Avatar into your avatar's Unity project with VCC (or ALCOM, etc.).
   2. Import OscPoser_{VERSION}.unitypackage into Unity.
   3. In the Hierarchy, drag Assets/OscPoser/OscPoser (the prefab) onto your avatar.
   4. Upload as usual.

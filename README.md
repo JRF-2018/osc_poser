@@ -25,7 +25,7 @@ Cluster 用の [OSCPoser(ymchn さん)](https://github.com/ymchn/OSCPoser)とは
 
 - Windows 10 / 11(64 bit)。exe は Windows 用です。
 - VRChat(PC 版)。私が確かめたのはデスクトップモードです。
-- アバターの Unity プロジェクト(Unity 2022.3、VRChat SDK3 Avatars)に **Modular Avatar**(VCC で入れる)。
+- アバターの Unity プロジェクト(Unity 2022.3、VRChat SDK3 Avatars)に **Modular Avatar**(VCC などで入れる)。
 - アバターと同じ体型の VRM ファイル(exe での表示用。VRoid Studio などで書き出したもの)。なくても送れますが、ポーズを見ながら選べません。
 - 人型(Humanoid)のアニメーションの .anim ファイル(テキスト形式)。Unity のプロジェクトにあるものや、アセットに入っているものがそのまま使えます。FBX の中のアニメーションは読めません。
 
@@ -35,7 +35,7 @@ Cluster 用の [OSCPoser(ymchn さん)](https://github.com/ymchn/OSCPoser)とは
 
 ![prefab をアバターの直下に置く](docs/images/02_install.jpg)
 
-1. Unity のアバターのプロジェクトに、Modular Avatar を VCC で入れておきます。
+1. Unity のアバターのプロジェクトに、Modular Avatar を VCC(ALCOM など)で入れておきます。
 2. zip の中の `OscPoser_x.y.z.unitypackage` を Unity に入れます(ドラッグするか、Assets → Import Package → Custom Package)。
 3. `Assets/OscPoser/OscPoser`(prefab)を、ヒエラルキーでアバターの直下にドラッグします。
 4. いつもどおりアップロードします。
@@ -100,7 +100,7 @@ Cluster 用の [OSCPoser(ymchn さん)](https://github.com/ymchn/OSCPoser)とは
 
 ## ソースから作る(開発者向け)
 
-- `unity/`: prefab(`Assets/OscPoser`)を作るエディターのスクリプト。VCC で Avatar のプロジェクトを作って Modular Avatar を入れ、`unity/Assets/OscPoserDev` をその `Assets` に入れて、メニューの Tools → OscPoser → Build で作ります。Tools → OscPoser → Export unitypackage で unitypackage を書き出します。
+- `unity/`: prefab(`Assets/OscPoser`)を作るエディターのスクリプト。VCC などで Avatar のプロジェクトを作って Modular Avatar を入れ、`unity/Assets/OscPoserDev` をその `Assets` に入れて、メニューの Tools → OscPoser → Build で作ります。Tools → OscPoser → Export unitypackage で unitypackage を書き出します。
 - `app/`: exe の Unity プロジェクト(Unity 2022.3.22f1、UniVRM 0.128.1)。`app/build.ps1` でバッチモードでビルドします(書き出し先は中の `$Out`)。
 
 ## Author (文責)
