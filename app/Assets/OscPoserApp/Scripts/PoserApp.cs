@@ -554,8 +554,8 @@ public class PoserApp : MonoBehaviour
         }
         GUI.backgroundColor = old;
         if (GUILayout.Button(new GUIContent(T("全部", "All"), T("全部の値を送り直す(VRChat でアバターを読み直したあとや、後から入った人に見せるとき)", "Resend all values (after reloading the avatar in VRChat, or for people who joined later)")), GUILayout.Width(44), GUILayout.Height(24))) SendNow(true);
-        var autoLabel = autoSend && autoPaused ? T("動かしたら送る(送るまで休み)", "Auto send (paused)") : T("動かしたら送る", "Auto send");
-        var auto = GUILayout.Toggle(autoSend, new GUIContent(autoLabel, T("時刻や体を変えて止めたら、変わった値を送る。起動したときと .anim を開いたときは、「送る」を押すまで休む", "When you change the time or body and stop, send the changed values. Paused at startup and after opening an .anim, until you press Send")));
+        var autoLabel = autoSend && autoPaused ? T("動かしたら送る(休止中)", "Auto send (paused)") : T("動かしたら送る", "Auto send");
+        var auto = GUILayout.Toggle(autoSend, new GUIContent(autoLabel, T("時刻や体を変えて止めたら、変わった値を送る。起動したときと .anim を開いたときは、「送る」を押すまで休止する", "When you change the time or body and stop, send the changed values. Paused at startup and after opening an .anim, until you press Send")));
         if (auto != autoSend)
         {
             if (auto) { autoPaused = false; lastQueued = lastValues; }   // 付け直したらすぐ再開。その時点の姿勢は送らない
