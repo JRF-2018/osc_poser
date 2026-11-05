@@ -1,7 +1,8 @@
 # OscPoser
 
-Pose your VRChat avatar from any humanoid .anim, over OSC.
+Pose your VRChat avatar from any humanoid .anim later, over OSC.
 OscPoser is a Modular Avatar prefab plus a small app (exe) that shows the pose and sends it.
+Set up the prefab and upload once; after that, you don't need to open Unity to use new poses.
 
 (日本語: [README.md](README.md))
 

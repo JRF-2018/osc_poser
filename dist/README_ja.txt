@@ -1,7 +1,8 @@
 OscPoser {VERSION}
 ==================
 
-どんな人型の .anim のポーズでも、OSC で VRChat のアバターにとらせるツールです。
+どんな人型の .anim のポーズでも、あとから OSC で VRChat のアバターにとらせるツールです。
+一度 prefab を入れてアップロードすれば、あとはポーズを増やすのに Unity を開く必要はありません。
 VRChat とは関係のない、非公式のツールです。
 詳しい説明: https://github.com/JRF-2018/osc_poser
 

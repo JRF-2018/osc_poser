@@ -1,7 +1,8 @@
 OscPoser {VERSION}
 ==================
 
-Pose your VRChat avatar from any humanoid .anim, over OSC.
+Pose your VRChat avatar from any humanoid .anim later, over OSC.
+Set up the prefab and upload once; after that, you don't need to open Unity to use new poses.
 This is an unofficial tool, not affiliated with VRChat.
 Full documentation: https://github.com/JRF-2018/osc_poser
 
