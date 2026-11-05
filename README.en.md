@@ -11,6 +11,7 @@ Set up the prefab and upload once; after that, you don't need to open Unity to u
 This is a tool that Claude Code (Claude Opus 5.5) made to order for me (JRF), shared in case it helps others. I use it to photograph avatars when I report on VRChat worlds.
 
 This is an unofficial tool, not affiliated with VRChat.
+It is also unrelated to [OSCPoser by ymchn](https://github.com/ymchn/OSCPoser), which is for Cluster and has a similar name.
 
 ## What it does
 

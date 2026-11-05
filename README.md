@@ -11,6 +11,7 @@ Modular Avatar 用の prefab と、ポーズを見て送る小さなアプリ(ex
 Claude Code(Claude Opus 5.5)が、私(JRF)のためにオーダーメイドで作ってくれたツールのおすそわけです。私はワールドの取材でアバターを撮影するのに使っています。
 
 VRChat とは関係のない、非公式のツールです。
+Cluster 用の [OSCPoser(ymchn さん)](https://github.com/ymchn/OSCPoser)とは、名前が似ていますが別のツールです。
 
 ## できること
 
