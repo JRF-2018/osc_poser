@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2 (2026-11-06)
+
+- OscPoser.exe: "Auto send" keeps your setting again. At startup and after opening an .anim it is only paused ("paused until Send"); pressing Send or All resumes it. Turning it back on resumes it right away.
+- 「動かしたら送る」は選んだ設定を覚える形に戻した。起動したときと .anim を開いたときは「送るまで休み」になり、「送る」か「全部」で再開する。チェックを付け直してもすぐ再開する。
+- The prefab (unitypackage) is unchanged since 0.2.0. / prefab(unitypackage)の中身は 0.2.0 から変わっていない。
+
 ## 0.2.1 (2026-11-05)
 
 - OscPoser.exe: "Auto send" is now off at startup and after opening an .anim, so nothing is sent until you press Send (or turn Auto send on and move something). Turning Auto send on no longer sends the current pose right away.
