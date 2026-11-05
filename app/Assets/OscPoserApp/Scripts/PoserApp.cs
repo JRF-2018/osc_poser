@@ -14,7 +14,7 @@ using UnityEngine;
 
 public class PoserApp : MonoBehaviour
 {
-    public const string Version = "0.2.0";
+    public const string Version = "0.2.1";
     const float TopH = 58;
 
     Camera cam;
@@ -47,7 +47,8 @@ public class PoserApp : MonoBehaviour
 
     // 送信
     OscSender sender;
-    bool poseOn, autoSend = true, topmost, showSettings;
+    // 動かしたら送る: 起動したときと .anim を開いたときは OFF(0.2.0 は前の設定のまま ON で、開いただけで送っていた)
+    bool poseOn, autoSend, topmost, showSettings;
     string portText = "9000";
     string valWaitText, idxWaitText, gapText;
     Dictionary<int, float> lastValues, lastQueued;
@@ -151,7 +152,6 @@ public class PoserApp : MonoBehaviour
         sender.Gap = PlayerPrefs.GetFloat("gap", 0.1f);
         sender.NoZero = PlayerPrefs.GetInt("noZero", 1) != 0;
         inPlace = PlayerPrefs.GetInt("inPlace", 1) != 0;
-        autoSend = PlayerPrefs.GetInt("autoSend", 1) != 0;
         topmost = PlayerPrefs.GetInt("topmost", 0) != 0;
         var lang = Arg("lang") ?? PlayerPrefs.GetString("lang", "");
         english = lang == "" ? Application.systemLanguage != SystemLanguage.Japanese : lang == "en";
@@ -174,7 +174,6 @@ public class PoserApp : MonoBehaviour
         PlayerPrefs.SetFloat("gap", sender.Gap);
         PlayerPrefs.SetInt("noZero", sender.NoZero ? 1 : 0);
         PlayerPrefs.SetInt("inPlace", inPlace ? 1 : 0);
-        PlayerPrefs.SetInt("autoSend", autoSend ? 1 : 0);
         PlayerPrefs.SetInt("topmost", topmost ? 1 : 0);
         PlayerPrefs.SetString("lang", english ? "en" : "ja");
         if (clip != null) { PlayerPrefs.SetString("anim", clip.Path); PlayerPrefs.SetFloat("time", time); }
@@ -219,6 +218,7 @@ public class PoserApp : MonoBehaviour
         try
         {
             clip = AnimClip.Load(path);
+            autoSend = false;   // 開いただけでは送らない
             time = clip.Length;
             playing = false;
             status = T($"アニメーション: {Path.GetFileName(path)}({clip.Length:0.###} 秒)", $"Animation: {Path.GetFileName(path)} ({clip.Length:0.###} s)");
@@ -550,7 +550,9 @@ public class PoserApp : MonoBehaviour
         }
         GUI.backgroundColor = old;
         if (GUILayout.Button(new GUIContent(T("全部", "All"), T("全部の値を送り直す(VRChat でアバターを読み直したあとや、後から入った人に見せるとき)", "Resend all values (after reloading the avatar in VRChat, or for people who joined later)")), GUILayout.Width(44), GUILayout.Height(24))) SendNow(true);
-        autoSend = GUILayout.Toggle(autoSend, new GUIContent(T("動かしたら送る", "Auto send"), T("時刻や体を変えて止めたら、変わった値を送る", "When you change the time or body and stop, send the changed values")));
+        var auto = GUILayout.Toggle(autoSend, new GUIContent(T("動かしたら送る", "Auto send"), T("時刻や体を変えて止めたら、変わった値を送る(起動したときと .anim を開いたときは OFF)", "When you change the time or body and stop, send the changed values (off at startup and after opening an .anim)")));
+        if (auto && !autoSend) lastQueued = lastValues;   // ON にした時点の姿勢は送らない(このあと動かした分から)
+        autoSend = auto;
         GUILayout.FlexibleSpace();
         showSettings = GUILayout.Toggle(showSettings, new GUIContent(T("設定", "Settings"), T("送る速さ", "Sending speed")), GUI.skin.button, GUILayout.Width(W(44, 64)));
         GUILayout.EndHorizontal();

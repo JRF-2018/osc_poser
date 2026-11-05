@@ -62,7 +62,7 @@ Download the zip from [Releases](https://github.com/JRF-2018/osc_poser/releases)
 | Send | Send the current pose and turn the pose on. Only values that changed since the last send are sent |
 | Pose ON / Pose OFF | Turn the pose on or off |
 | All | Resend every value (after you reload the avatar in VRChat, or for people who joined the instance later) |
-| Auto send | When you move the timeline or a body slider and stop, the changed values are sent |
+| Auto send | When you move the timeline or a body slider and stop, the changed values are sent. Off at startup and after opening an .anim |
 | Body (added to the pose) | Up, Side and Fwd (±1.5 in humanoid units), Turn (±180°), Pitch (±180°), Roll (±90°). "0" resets one axis, "Reset body" resets all |
 | In place | Ignore the animation's sideways and forward movement (on by default) |
 | Settings | Sending speed (see "How it works" below) |
