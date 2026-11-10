@@ -24,7 +24,7 @@ using UnityEngine;
 
 public partial class PoserApp : MonoBehaviour
 {
-    public const string Version = "0.4.0";
+    public const string Version = "0.4.1";
     const float TopH = 58;
 
     Camera cam;
@@ -404,7 +404,13 @@ public partial class PoserApp : MonoBehaviour
                 baseName = clip != null ? $"{(baseName != null ? baseName + " + " : "")}{Path.GetFileNameWithoutExtension(clip.Path)}@{time:0.##}"
                                         : baseName ?? T("立った姿勢", "standing");
             }
-            else { baseMuscles = null; baseName = null; }
+            else
+            {
+                baseMuscles = null; baseName = null;
+                // 全身のクリップ(.anim・ポーズの .json)を開いたら、手の操作(☛)は必ず消す。前は下の姿勢の値の変化で決めていたので、
+                // 体が同じポーズ(重ねたものを保存した .json を開き直す、など)では手の IK が残って当て直されていた(2026-11-11)
+                if (ik.Active) ResetIk();
+            }
             clip = c;
             autoPaused = true;   // 開いただけでは送らない(「送る」で再開)
             time = clip.Length;

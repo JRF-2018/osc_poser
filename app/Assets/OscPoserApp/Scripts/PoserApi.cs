@@ -403,13 +403,20 @@ public partial class PoserApp
                 WinNative.BringToFront(myWindow);
                 return null;
 
-            case "shot":   // {"path": "....png"} この窓を撮る。path がなければ PNG を base64 で返す("png")。"view": front|right|left|back
+            case "shot":   // {"path": "....png"} この窓を撮る。path がなければ PNG を base64 で返す("png")。
+                           // 視点の指定(view・focus・azimuth など、PoserView.cs)を先に当てる。"handles": true で ☛ のハンドルも写す、"crop": true で 3D の所だけ
             {
                 var p = S(q, "path");
                 if (p != null && !p.EndsWith(".png", StringComparison.OrdinalIgnoreCase)) throw new Exception("撮った画像は .png に");
-                if (S(q, "view") is string v) ResetView(v);
-                return Shot(p, res);
+                ApplyView(q);
+                res["view"] = ViewJson();
+                return Shot(p, res, !Bq(q, "handles"), Bq(q, "crop"));
             }
+
+            case "view":   // 視点(PoserView.cs)。何も書かなければ今の視点を返すだけ
+                ApplyView(q);
+                res["view"] = ViewJson();
+                return null;
 
             case "stop":   // 全部の相手の、まだ送っていない分をやめる(巡回は続く)
                 if (Multi) foreach (var sl in slots) (sl.Sender == sender ? sender : sl.Sender).Cancel();
@@ -444,13 +451,24 @@ public partial class PoserApp
         }
     }
 
-    IEnumerator Shot(string path, Dictionary<string, object> res)
+    IEnumerator Shot(string path, Dictionary<string, object> res, bool hideHandles = true, bool crop = false)
     {
+        hideGizmoForShot = hideHandles;
         yield return null;   // 姿勢・視点を当て直してから
         yield return new WaitForEndOfFrame();
         var tex = ScreenCapture.CaptureScreenshotAsTexture();
+        hideGizmoForShot = false;
         try
         {
+            if (crop)   // 上下の帯を除いた 3D の所だけ(テクスチャの y は下から)
+            {
+                int top = Mathf.CeilToInt(TopH), bot = Mathf.CeilToInt(bottomH), h = Mathf.Max(1, tex.height - top - bot);
+                var c = new Texture2D(tex.width, h, TextureFormat.RGB24, false);
+                c.SetPixels(tex.GetPixels(0, bot, tex.width, h));
+                c.Apply();
+                Destroy(tex);
+                tex = c;
+            }
             var png = tex.EncodeToPNG();
             if (path != null) File.WriteAllBytes(path, png);
             else res["png"] = Convert.ToBase64String(png);

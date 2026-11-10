@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.1 (2026-11-11)
+
+- MCP/API: `set_view` (and the same options on `screenshot`): focus on a body part (whole, head, chest, hips, hands, feet), azimuth from the body's front, elevation, distance, zoom, pan. `screenshot` hides the hand handles unless `handles`, and `crop` keeps only the 3D view. / 視点を決める `set_view`(`screenshot` にも): 部分に寄る・体の正面からの角度・見下ろす角度・距離・寄る・ずらす。撮るときは手のハンドルを隠す。`crop` で 3D の所だけ。
+- Opening a full-body .anim or pose .json always clears the hand edits (☛). Before, they stayed when the body was the same (for example, reopening a saved checkpoint), and the hand IK was applied again. / 全身の .anim・.json を開いたら、手の操作は必ず消す(前は体が同じだと残っていた)。
+- MCP: tips for building a pose by layering (checkpoints with save_pose instead of undo) are sent to the AI and written in the README. / 重ねてポーズを作るコツ(戻すのは save_pose の区切りから)を AI への案内と README に。
+- The prefab (unitypackage) is unchanged since 0.2.0 (only the version). / prefab の中身は 0.2.0 から変わっていない(版だけ)。
+
 ## 0.4.0 (2026-11-10)
 
 - MCP server: start with `-api` (default port 9330) and an AI such as Claude can use OscPoser as MCP tools at `http://127.0.0.1:9330/mcp` (open a pose, set the time, send, on/off, body, hands, read/save the pose, held objects, and a screenshot of the view as an image). `oscposer_mcp.ps1` in the zip bridges stdio-only clients. The same port takes plain HTTP (`GET /state`, `POST /cmd`). Listens on 127.0.0.1 only; requests from browsers (Origin) and other host names are refused. / MCP のサーバー: `-api`(既定 9330)で起動すると、AI が MCP のツールとして使える(ポーズを開く・時刻・送る・ON/OFF・体・手・姿勢の読み書き・物・画面を画像で)。stdio だけの相手には zip の `oscposer_mcp.ps1`。同じ口でふつうの HTTP も。127.0.0.1 だけで、ブラウザからの要求は断る。

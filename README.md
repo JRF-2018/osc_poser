@@ -175,7 +175,15 @@ VRChat を 2 つ以上起動して(例: `launch.exe --profile=1 --osc=9010:127.0
 - 標準入出力でしかつなげない相手(Claude Desktop の設定や、WSL の中の Claude Code など)は、zip の中の `oscposer_mcp.ps1`(Windows の PowerShell だけで動く中継)を使います: `claude mcp add oscposer -- powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\…\oscposer_mcp.ps1"`
 - 先に OscPoser を `-api` 付きで起動してから、AI の側を起動してください(ショートカットのリンク先の最後に ` -api` を足しておくと便利です)。
 - ツールやコマンドに `port` を付けると、そのポートの相手を操作します。ふつうの起動では窓に出ているポートとしか話せないので、先に `set_port` で切り替えるか、`-targets` で起動してください。
-- ツール: `get_state`・`open_vrm`・`open_animation`・`open_pose`・`set_time`・`send_pose`・`set_pose_on`・`set_body`・`move_hand`・`get_pose_values`・`save_pose`・`held_object`・`screenshot`・`stop_sending`・`set_port`。
+- ツール: `get_state`・`open_vrm`・`open_animation`・`open_pose`・`set_time`・`send_pose`・`set_pose_on`・`set_body`・`move_hand`・`get_pose_values`・`save_pose`・`held_object`・`set_view`・`screenshot`・`stop_sending`・`set_port`。
+- 視点(`set_view`。`screenshot` にも同じ指定を付けられる): `focus`(全身・頭・胸・腰・右手・左手・両手・足元に寄る)、`azimuth`(体の正面から回る角度。90 でアバターの右から)、`elevation`(見下ろす角度)、`distance`・`zoom`・`pan`。`screenshot` は手のハンドルを隠して撮ります(`handles` で写す)。`crop` で 3D の所だけ。
+- **ポーズを作るときのコツ**(AI にも、つないだときに同じことを伝えています):
+  - 重ねて作ります。全身の .anim かポーズの .json を土台に開き、手だけ・上半身だけの .anim や、`open_pose` に筋肉のいくつかの値(`{"Right Hand Down-Up": 0.5}` など)を渡して重ね、手首は `move_hand` で動かします。
+  - 重ねるたびに、その下の姿勢が固まります。一つ前に戻す機能はないので、区切りごとに `save_pose` で保存し(`…_step1.json` など)、戻すときは前の .json を `open_pose` で開き直します(すぐ開けます)。`save_pose` には手の IK と体の位置も入ります。
+  - 全身の .anim や .json を開くと、重ねたものと手の操作は消えます。アニメーションの時刻を変えて体の姿勢が変わったときも、手の操作は消えます。
+  - 直す前と後で見比べます。`focus` で寄り、2 つの向き(`azimuth` 0 と 90 など)から撮ると、奥行きが分かります。小さな変化は、画像より `get_pose_values` の値で確かめるほうが確実です。
+  - 筋肉の値は Unity の筋肉の単位(ふつう -1〜1、±4 まで)。どちらに動くかは腕のほかの値で変わるので、少しずつ動かして見ます。
+  - `send_pose` まで VRChat には届きません。
 - `screenshot` が撮るのは OscPoser の窓です。VRChat の画面(カメラ役の画面など)を AI に見せたいときは、画面を撮る別の MCP などと組み合わせてください。
 - 同じ口で、ふつうの HTTP でも操作できます(`GET /state`、`POST /cmd` に `{"cmd": "anim", "path": "…", "time": 0.5}` などの JSON。スクリプトから使う人向け)。
 - 守り: 口は 127.0.0.1 だけで開き、ほかの PC からは届きません。ブラウザの Web ページからの要求(Origin の付いたもの)と、名前の違う要求は断ります。`save_pose` は .json、撮った画像は .png にだけ書きます。

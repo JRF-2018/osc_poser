@@ -46,7 +46,7 @@ public partial class PoserApp
         Camera.onPostRender += DrawGizmo;
     }
 
-    bool GizmoShown => advanced && gizmo != GizmoMode.Off && vrm != null && handler != null;
+    bool GizmoShown => advanced && gizmo != GizmoMode.Off && vrm != null && handler != null && !hideGizmoForShot;
 
     // 骨の位置から、ハンドルを作る(姿勢を当てたあと = LateUpdate で)
     void BuildGizmo()

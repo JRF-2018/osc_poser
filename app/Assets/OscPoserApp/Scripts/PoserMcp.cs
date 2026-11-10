@@ -11,6 +11,19 @@ public partial class PoserApp
 {
     static readonly string[] McpVersions = { "2025-06-18", "2025-03-26", "2024-11-05" };
 
+    // ポーズを作るときのコツ(MCP の instructions に入れる。README にも同じことを書く)
+    const string PoseEditingTips =
+        "Tips for building a pose (OscPoser works as a small pose editor):\n"
+        + "- Build by layering. Open a full-body .anim or pose .json as the base, then layer: a partial .anim (hands only, upper body only...) "
+        + "or open_pose with a few muscle values ({\"Right Hand Down-Up\": 0.5}) is put on top of the pose you see. move_hand moves a wrist by IK.\n"
+        + "- Each layer freezes what was under it. There is no undo: save checkpoints with save_pose (e.g. ..._step1.json, _step2.json) "
+        + "and go back by open_pose of the last good one (it is fast). save_pose includes hand IK and body offsets.\n"
+        + "- Opening a full-body .anim/.json clears the layers and hand edits. Changing the time of a clip clears hand edits when the body pose changes.\n"
+        + "- Look before and after each change: screenshot with focus (head, right_hand, hands, feet...) and two angles (e.g. azimuth 0 and 90), "
+        + "because depth is hard to judge from one view. For small changes, compare get_pose_values rather than images.\n"
+        + "- Muscle values are Unity muscle units (usually -1..1, up to ±4). Which way a muscle moves depends on the rest of the arm; try a small step and look.\n"
+        + "- Nothing reaches VRChat until send_pose. Use all=true after the avatar was reloaded in VRChat.";
+
     // ネットワークのスレッドから呼ぶ。返すのは (HTTP のコード, 本文)
     (int, string) McpHandle(string body)
     {
@@ -54,7 +67,8 @@ public partial class PoserApp
                     ["serverInfo"] = new Dictionary<string, object> { ["name"] = "OscPoser", ["version"] = Version },
                     ["instructions"] = "OscPoser shows a VRM avatar in a pose (from a humanoid .anim at a time, or a pose .json) and sends that pose to VRChat over OSC "
                         + "(the avatar needs the OscPoser prefab). Opening a pose does not send it: call send_pose, then the pose turns ON. "
-                        + "Use screenshot to see the avatar. 'port' selects the VRChat OSC input port (9000, 9010, 9020...); omitted = the port shown in the window.",
+                        + "Use screenshot to see the avatar. 'port' selects the VRChat OSC input port (9000, 9010, 9020...); omitted = the port shown in the window.\n"
+                        + PoseEditingTips,
                 });
             }
             case "ping":
@@ -127,11 +141,28 @@ public partial class PoserApp
                 Props(("action", P("string", "grab, release or spin", new Dictionary<string, object> { ["enum"] = new List<object> { "grab", "release", "spin" } })),
                       ("axis", P("string", "for spin", new Dictionary<string, object> { ["enum"] = HoldInput.Axes.Cast<object>().ToList() })),
                       ("sign", num("for spin: 1 or -1")), ("count", num("for spin: steps"))), "action"),
-            Tool("screenshot", "Capture the OscPoser window (the avatar in the current pose) and return it as an image.",
-                Props(("view", P("string", "Reset the camera first", new Dictionary<string, object> { ["enum"] = new List<object> { "front", "right", "left", "back" } })))),
+            Tool("set_view", "Move the 3D view camera (the window shows it too). Everything is optional; omitted = unchanged. Returns the current view.", ViewProps()),
+            Tool("screenshot", "Capture the OscPoser window (the avatar in the current pose) and return it as an image. Accepts the same camera options as set_view, applied first. "
+                + "The on-screen hand handles are hidden unless handles=true.",
+                new Dictionary<string, object>(ViewProps()) {
+                    ["handles"] = P("boolean", "Also draw the hand handles (default: hidden)"),
+                    ["crop"] = P("boolean", "Only the 3D view, without the top and bottom bars"),
+                }),
             Tool("stop_sending", "Cancel values not sent yet, for all targets (cycle sending continues).", Props()),
         };
     }
+
+    static Dictionary<string, object> ViewProps() => Props(
+        ("view", P("string", "Preset: the whole body from the front / right / left / back of the body",
+            new Dictionary<string, object> { ["enum"] = new List<object> { "front", "right", "left", "back" } })),
+        ("focus", P("string", "Center on a body part (in the current pose) at a distance that fits it",
+            new Dictionary<string, object> { ["enum"] = new List<object> { "whole", "head", "chest", "hips", "right_hand", "left_hand", "hands", "feet" } })),
+        ("azimuth", P("number", "Degrees around the avatar, measured from the way its body faces (also when the pose turns the body): 0 = from the front, 90 = from the avatar's right, 180 = from behind, -90 = from its left")),
+        ("elevation", P("number", "Degrees looking down (+, from above) or up (-, from below), -89..89")),
+        ("distance", P("number", "Meters from the center")),
+        ("zoom", P("number", "Multiply the current distance (0.5 = twice as close)")),
+        ("pan", P("array", "[right, up] meters, shifts the center in screen directions", new Dictionary<string, object> { ["items"] = new Dictionary<string, object> { ["type"] = "number" } })),
+        ("relative", P("boolean", "azimuth/elevation are added to the current ones")));
 
     Dictionary<string, object> McpCall(string name, Dictionary<string, object> a)
     {
@@ -153,6 +184,7 @@ public partial class PoserApp
             case "save_pose": cmd = "save"; break;
             case "held_object": cmd = S(a, "action") ?? ""; req.Remove("action"); if (cmd != "grab" && cmd != "release" && cmd != "spin") cmd = "?"; break;
             case "screenshot": cmd = "shot"; req.Remove("path"); break;
+            case "set_view": cmd = "view"; break;
             case "stop_sending": cmd = "stop"; break;
             default:
                 return ToolResult(new List<object> { Text("unknown tool: " + name) }, true);
