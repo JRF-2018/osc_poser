@@ -1,6 +1,8 @@
 // Windows の機能: ファイルのドラッグアンドドロップ、ファイルを開くダイアログ、いつも手前。(VrmPoseViewer のものに手前を足した)
 // ドロップは、Unity の窓に DragAcceptFiles を付け、メインスレッドのメッセージを WH_GETMESSAGE のフックで見て
 // WM_DROPFILES を拾う。
+// 0.3.0: VRChat の窓を前面に出す(持つのに要る)。VRChat はアンチチートでコマンドラインが読めないので、
+// OSC の受信ポートを開いているプロセスを UDP の表(GetExtendedUdpTable)から探し、その窓を前面に出す。
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -150,7 +152,94 @@ public static class WinNative
         var h = UnityWindow();
         if (h != IntPtr.Zero) SetWindowPos(h, new IntPtr(on ? -1 : -2), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010);   // NOSIZE | NOMOVE | NOACTIVATE
     }
+
+    // ---- VRChat の窓を前面に出す ----
+
+    [DllImport("iphlpapi.dll")] static extern uint GetExtendedUdpTable(IntPtr table, ref int size, bool sort, int af, int tableClass, uint reserved);
+    [DllImport("user32.dll")] static extern bool EnumWindows(EnumWindowsProc fn, IntPtr lParam);
+    [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);
+    [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hWnd);
+    [DllImport("user32.dll")] static extern bool IsWindow(IntPtr hWnd);
+    [DllImport("user32.dll")] static extern IntPtr GetWindow(IntPtr hWnd, uint cmd);
+    [DllImport("user32.dll")] static extern bool IsIconic(IntPtr hWnd);
+    [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr hWnd, int cmd);
+    [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hWnd);
+    [DllImport("user32.dll")] static extern bool BringWindowToTop(IntPtr hWnd);
+    [DllImport("user32.dll")] static extern bool AttachThreadInput(uint a, uint b, bool attach);
+    [DllImport("user32.dll")] static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
+    [DllImport("kernel32.dll")] static extern uint GetCurrentProcessId();
+
+    // UDP の port を開いているプロセス(IPv4 と IPv6。見つからなければ 0)
+    static uint PidOfUdpPort(int port)
+    {
+        foreach (var (af, rowSize, portOff) in new[] { (2, 12, 4), (23, 28, 20) })   // AF_INET: addr, port, pid / AF_INET6: addr16, scope, port, pid
+        {
+            int size = 0;
+            GetExtendedUdpTable(IntPtr.Zero, ref size, false, af, 1, 0);   // UDP_TABLE_OWNER_PID
+            if (size <= 0) continue;
+            var buf = Marshal.AllocHGlobal(size);
+            try
+            {
+                if (GetExtendedUdpTable(buf, ref size, false, af, 1, 0) != 0) continue;
+                int n = Marshal.ReadInt32(buf);
+                for (int i = 0; i < n; i++)
+                {
+                    var row = buf + 4 + i * rowSize;
+                    int raw = Marshal.ReadInt32(row + portOff);
+                    int p = ((raw & 0xff) << 8) | ((raw >> 8) & 0xff);   // ネットワークの順
+                    uint pid = (uint)Marshal.ReadInt32(row + portOff + 4);
+                    if (p == port && pid != GetCurrentProcessId()) return pid;
+                }
+            }
+            finally { Marshal.FreeHGlobal(buf); }
+        }
+        return 0;
+    }
+
+    // OSC の受信ポート port を開いている VRChat の、見えている一番上の窓(なければ 0)
+    public static IntPtr FindWindowByUdpPort(int port)
+    {
+        uint pid = PidOfUdpPort(port);
+        if (pid == 0) return IntPtr.Zero;
+        IntPtr found = IntPtr.Zero;
+        EnumWindows((h, _) =>
+        {
+            GetWindowThreadProcessId(h, out var p);
+            if (p == pid && IsWindowVisible(h) && GetWindow(h, 4) == IntPtr.Zero) { found = h; return false; }   // 4 = GW_OWNER
+            return true;
+        }, IntPtr.Zero);
+        return found;
+    }
+
+    // 窓を前面に出す。前面の窓のスレッドに入力をつないでから(Windows の制限を避ける)。だめなら Alt を一度押して離してから
+    public static bool BringToFront(IntPtr h)
+    {
+        if (h == IntPtr.Zero || !IsWindow(h)) return false;
+        if (IsIconic(h)) ShowWindow(h, 9);   // SW_RESTORE
+        var fg = GetForegroundWindow();
+        uint me = GetCurrentThreadId();
+        uint other = fg != IntPtr.Zero ? GetWindowThreadProcessId(fg, out _) : 0;
+        if (other != 0 && other != me) AttachThreadInput(me, other, true);
+        bool ok;
+        try { ok = SetForegroundWindow(h); BringWindowToTop(h); }
+        finally { if (other != 0 && other != me) AttachThreadInput(me, other, false); }
+        if (!ok || GetForegroundWindow() != h)
+        {
+            keybd_event(0x12, 0, 0, UIntPtr.Zero);   // VK_MENU
+            keybd_event(0x12, 0, 2, UIntPtr.Zero);   // KEYEVENTF_KEYUP
+            ok = SetForegroundWindow(h);
+            BringWindowToTop(h);
+        }
+        return ok;
+    }
+
+    // この窓(メインスレッドで呼ぶ)
+    public static IntPtr MyWindow() => UnityWindow();
 #else
+    public static IntPtr FindWindowByUdpPort(int port) => IntPtr.Zero;
+    public static bool BringToFront(IntPtr h) => false;
+    public static IntPtr MyWindow() => IntPtr.Zero;
     public static void SetTopmost(bool on) { }
     public static void InstallDrop() { }
     public static void UninstallDrop() { }

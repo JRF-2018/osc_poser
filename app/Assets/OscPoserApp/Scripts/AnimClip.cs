@@ -112,6 +112,24 @@ public class AnimClip
     }
 
     public bool Has(string name) => Curves.ContainsKey(name);
+
+    // 一部のポーズか(0.3.0、pose_send と同じ判定): 体の主な筋肉(指・目・顎・UpperChest を除く)の 8 割に満たないクリップ
+    // (手だけ、上半身だけ など)は、入っている値だけを今のポーズに重ねる。全身のクリップは、入っていない筋肉を 0 にする。
+    public int CoreHave, CoreTotal;
+    public bool Partial
+    {
+        get
+        {
+            CoreTotal = 0; CoreHave = 0;
+            foreach (var n in PoseParams.MuscleNames)
+            {
+                if (n.Contains("Hand.") || n.Contains("Eye") || n.Contains("Jaw") || n.Contains("UpperChest")) continue;
+                CoreTotal++;
+                if (Curves.ContainsKey(n)) CoreHave++;
+            }
+            return CoreHave < 0.8f * CoreTotal;
+        }
+    }
     public float Value(string name, float t, float fallback = 0f) =>
         Curves.TryGetValue(name, out var c) ? c.Evaluate(t) : fallback;
 
@@ -122,10 +140,14 @@ public class AnimClip
         foreach (var kv in Curves)
             if (Muscles.Index.ContainsKey(kv.Key))
                 p.Muscles[kv.Key] = kv.Value.Evaluate(t);
-        if (Has("RootT.y"))
-            p.RootT = new Vector3(Value("RootT.x", t), Value("RootT.y", t), Value("RootT.z", t));
-        if (Has("RootQ.w"))
+        p.HasY = Has("RootT.y");
+        p.HasXZ = Has("RootT.x") || Has("RootT.z");
+        p.HasQ = Has("RootQ.x") || Has("RootQ.y") || Has("RootQ.z") || Has("RootQ.w");
+        if (p.HasY || p.HasXZ)
+            p.RootT = new Vector3(Value("RootT.x", t), Value("RootT.y", t, 1f), Value("RootT.z", t));
+        if (p.HasQ)
         {
+            // 一部の成分だけのクリップもある(例: x・w だけ)。ない成分は単位の向きの値
             var q = new Quaternion(Value("RootQ.x", t), Value("RootQ.y", t), Value("RootQ.z", t), Value("RootQ.w", t, 1f));
             p.RootQ = Quaternion.Normalize(q);
         }
@@ -139,6 +161,7 @@ public class PoseData
     public readonly Dictionary<string, float> Muscles = new Dictionary<string, float>();
     public Vector3 RootT = new Vector3(0, 1, 0);
     public Quaternion RootQ = Quaternion.identity;
+    public bool HasY, HasXZ, HasQ;
 }
 
 // 筋肉の名前の表。HumanTrait.MuscleName は指を "Left Thumb 1 Stretched" と呼ぶが、

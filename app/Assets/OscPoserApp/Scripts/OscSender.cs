@@ -4,6 +4,11 @@
 // 待つのは、ほかの人(カメラ役)の側に同期で届くのを待つため。送るのは別のスレッドで、
 // 送っている途中に値が変われば、まだ送っていない分は最後の値に置き換わる(同じ番号を何度も送らない)。
 // 送った値は控え(Sent)に残し、次からは変わった値だけを送る(SendChanged)。
+//
+// 巡回送信(0.3.0、panel.py の ♙ 巡回から): 送るものがない間も、控え(送り終えた値。編集中の値ではない)を 1 組ずつ
+// 順番をばらして送り直し続ける。取りこぼした値や、後から入った人の側の値が自然に直る。控えは起動したときは空なので、
+// 最初の送信のあとから始まる。任意ポーズが OFF の間も回す(OFF の間に入った人も、ON にした瞬間から正しいポーズを見られる)。
+// 新しい送信が優先(巡回は送るものがないときだけ)。1 組ごとに Idx を 0 に戻す。
 using System;
 using System.Collections.Generic;
 using System.Net.Sockets;
@@ -18,6 +23,8 @@ public class OscSender : IDisposable
     public int Port = 9000;
     public float ValWait = 0.025f, IdxWait = 0.1f, Gap = 0.1f;
     public bool NoZero = true;
+    public bool CycleOn = true;
+    public float CyclePair = 0.3f;   // 巡回の 1 組の間隔(秒。少しばらつかせる)
 
     readonly UdpClient udp = new UdpClient();
     readonly object gate = new object();
@@ -28,6 +35,11 @@ public class OscSender : IDisposable
     bool turnOnAfter;
     int total, done;
     public string LastError;
+    readonly List<int> cycleOrder = new List<int>();
+    readonly Random rnd = new Random();
+    float cycleWait;
+    volatile bool cycling;
+    public bool Cycling => cycling;
 
     public OscSender()
     {
@@ -74,7 +86,7 @@ public class OscSender : IDisposable
     // 控えを消す(アバターを着替えた・読み直したときなど。次の送信は全部送る)
     public void Forget()
     {
-        lock (gate) sent.Clear();
+        lock (gate) { sent.Clear(); cycleOrder.Clear(); }
     }
 
     // まだ送っていない分をやめる
@@ -93,11 +105,42 @@ public class OscSender : IDisposable
     {
         while (!quit)
         {
-            int idx; float v;
+            int idx = 0; float v = 0; bool cyc = false;
             lock (gate)
             {
-                while (pending.Count == 0 && !quit) Monitor.Wait(gate);
+                while (pending.Count == 0 && !quit)
+                {
+                    if (CycleOn && sent.Count > 0)
+                    {
+                        cycling = true;
+                        if (!Monitor.Wait(gate, (int)(cycleWait * 1000)) && pending.Count == 0 && CycleOn && NextCycle(out idx, out v))
+                        {
+                            cyc = true;
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        cycling = false;
+                        Monitor.Wait(gate, 500);
+                    }
+                }
                 if (quit) return;
+            }
+            if (cyc)
+            {
+                float pair = Math.Max(0.05f, CyclePair);
+                SendFloat("Val", v);
+                Sleep(pair * 0.2f);
+                SendInt("Idx", idx);
+                Sleep(pair * 0.4f);
+                SendInt("Idx", 0);
+                lock (gate) cycleWait = pair * (0.3f + 0.3f * (float)rnd.NextDouble());   // 0 のあと。ばらつかせる
+                continue;
+            }
+            lock (gate)
+            {
+                cycleOrder.Clear();   // 新しい値を送ったら、巡回は新しい周から
                 using (var e = pending.GetEnumerator()) { e.MoveNext(); idx = e.Current.Key; v = e.Current.Value; }
                 pending.Remove(idx);
                 inFlight = true;
@@ -127,6 +170,7 @@ public class OscSender : IDisposable
                 sent[idx] = v;
                 done++;
                 inFlight = false;
+                cycleWait = CyclePair;   // 送り終えたら、少し置いてから巡回
                 if (pending.Count == 0 && turnOnAfter)
                 {
                     turnOnAfter = false;
@@ -136,6 +180,27 @@ public class OscSender : IDisposable
         }
     }
 
+    // 巡回の次の 1 組(gate の中で呼ぶ)。1 周ごとに順番をばらす
+    bool NextCycle(out int idx, out float v)
+    {
+        idx = 0; v = 0;
+        for (int guard = 0; guard < 2; guard++)
+        {
+            if (cycleOrder.Count == 0)
+            {
+                cycleOrder.AddRange(sent.Keys);
+                for (int i = cycleOrder.Count - 1; i > 0; i--) { int j = rnd.Next(i + 1); (cycleOrder[i], cycleOrder[j]) = (cycleOrder[j], cycleOrder[i]); }
+            }
+            while (cycleOrder.Count > 0)
+            {
+                idx = cycleOrder[cycleOrder.Count - 1];
+                cycleOrder.RemoveAt(cycleOrder.Count - 1);
+                if (sent.TryGetValue(idx, out v)) return true;
+            }
+        }
+        return false;
+    }
+
     static void Sleep(float s)
     {
         if (s > 0) Thread.Sleep((int)(s * 1000));
@@ -143,14 +208,18 @@ public class OscSender : IDisposable
 
     // ---- OSC のメッセージ(アドレス、型、値。どれも 4 バイト区切り、数は big endian)----
 
-    void SendFloat(string name, float v) => Raw(name, ",f", BitConverter.GetBytes(v));
-    void SendInt(string name, int v) => Raw(name, ",i", BitConverter.GetBytes(v));
-    void SendBool(string name, bool v) => Raw(name, v ? ",T" : ",F", null);
+    void SendFloat(string name, float v) => Raw(Prefix + name, ",f", BitConverter.GetBytes(v), Port);
+    void SendInt(string name, int v) => Raw(Prefix + name, ",i", BitConverter.GetBytes(v), Port);
+    void SendBool(string name, bool v) => Raw(Prefix + name, v ? ",T" : ",F", null, Port);
 
-    void Raw(string name, string tag, byte[] arg)
+    // VRChat の入力(/input/名前。持つ・離す・物を回すなど)。port を決めて送る(送っている途中にポートを変えても、始めた相手に)
+    public void Input(int port, string name, int v) => Raw("/input/" + name, ",i", BitConverter.GetBytes(v), port);
+    public void Input(int port, string name, float v) => Raw("/input/" + name, ",f", BitConverter.GetBytes(v), port);
+
+    void Raw(string address, string tag, byte[] arg, int port)
     {
         var buf = new List<byte>();
-        Pad(buf, Encoding.ASCII.GetBytes(Prefix + name));
+        Pad(buf, Encoding.ASCII.GetBytes(address));
         Pad(buf, Encoding.ASCII.GetBytes(tag));
         if (arg != null)
         {
@@ -158,7 +227,7 @@ public class OscSender : IDisposable
             buf.AddRange(arg);
         }
         var data = buf.ToArray();
-        try { udp.Send(data, data.Length, Host, Port); }
+        try { udp.Send(data, data.Length, Host, port); }
         catch (Exception ex) { LastError = ex.Message; }
     }
 

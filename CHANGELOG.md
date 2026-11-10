@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0 (2026-11-10)
+
+- Cycle send (on by default; Settings): after sending, the sent values keep being resent one pair at a time in shuffled order (0.3 s per pair). Missed values and the pose seen by late joiners fix themselves. It starts after the first send, keeps going while the pose is OFF, and resends the sent values, not the ones being edited. / 巡回送信(既定 ON、設定で切れる・間隔を変えられる): 送り終えたあとも、送った値を順番をばらして 1 組ずつ送り直し続ける。最初の送信のあとから始まり、ポーズ OFF の間も回す。回すのは送り終えた値で、編集中の値ではない。
+- Partial .anim (less than 80% of the main body muscles, such as hands only) is layered on the current pose. / 一部のポーズの .anim(手だけなど)は今のポーズに重ねる。
+- `-port N` starts a window for that port; the last VRM, animation and time are remembered per port, and the port is not saved. / `-port N` で起動すると、そのポート用の窓に(最後のファイルはポートごとに覚え、ポートは保存しない)。
+- Advanced features (Settings → Advanced): Grab (keeps holding; brings VRChat's window to the front, found by its OSC port), Release, turning the held object (SpinHold), MoveHoldFB (does not work in desktop VRChat as of 2026-11), and ☛ moving the pose's hands (IK: wrist position, hand rotation and elbow swing). / 上級機能: 持つ(持ち続ける)・離す・持った物を回す・MoveHoldFB(今のデスクトップでは効かない)・☛ 手を動かす(IK)。
+- Advanced: on-screen handles for ☛ in the 3D view (Move W: arrows and a screen-plane ball; Rotate E: rings around the hand bone's axes; elbow: drag a ball along a ring around the shoulder–wrist line; Hide Q). / 3D の画面で ☛ をハンドルで(移動・回転・肘の輪)。
+- Tooltips have an almost opaque background. / ツールチップの背景をほぼ不透明に。
+- The prefab (unitypackage) is unchanged since 0.2.0 (only the version). / prefab の中身は 0.2.0 から変わっていない(版だけ)。
+- README: a whole send occasionally does not arrive (the pose stays as it was), regardless of the waits. Press "All" to resend. / ときどき一回の送信がまるごと届かず、前のポーズのままになることがある(待ち時間に関係なく)。「全部」で送り直す、と書いた。
+
 ## 0.2.2 (2026-11-06)
 
 - OscPoser.exe: "Auto send" keeps your setting again. At startup and after opening an .anim it is only paused ("paused until Send"); pressing Send or All resumes it. Turning it back on resumes it right away.

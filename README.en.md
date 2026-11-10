@@ -18,7 +18,9 @@ It is also unrelated to [OSCPoser by ymchn](https://github.com/ymchn/OSCPoser), 
 - Put one prefab on your avatar and upload. Your avatar can then take any pose sent over OSC. No Expressions menu setup is needed.
 - Drop a VRM and an .anim onto the app, pick a moment on the timeline, and press Send. Your avatar in VRChat takes that pose.
 - You can also add height, sideways and forward offsets, turn, and tilt. This lets you float in the air, lie down, or sit on nothing, which emotes can't do.
-- The pose is synced, so other people (such as a camera person) see the same pose.
+- The pose is synced, so other people (such as a camera person) see the same pose. After sending, the app keeps resending the values slowly (cycle send), so missed values and the pose seen by people who join later fix themselves.
+- An .anim with only hands or only the upper body can be layered on the current pose (for example, to change just the hand shape).
+- Advanced features (turn on in Settings): keep holding a world object, turn the held object, and move the pose's hands freely (☛). See [below](#advanced).
 - The app shows both VRM 0.x and 1.0. The app's UI is in Japanese and English.
 
 ## Requirements
@@ -65,11 +67,21 @@ Download the zip from [Releases](https://github.com/JRF-2018/osc_poser/releases)
 | Auto send | When you move the timeline or a body slider and stop, the changed values are sent. Paused at startup and after opening an .anim, until you press Send |
 | Body (added to the pose) | Up, Side and Fwd (±1.5 in humanoid units), Turn (±180°), Pitch (±180°), Roll (±90°). "0" resets one axis, "Reset body" resets all |
 | In place | Ignore the animation's sideways and forward movement (on by default) |
-| Settings | Sending speed (see "How it works" below) |
+| Settings | Sending speed (see "How it works" below), cycle send, advanced features |
+| Cycle send (Settings) | After sending, keep resending the sent values one pair at a time, in shuffled order (on by default; 0.3 s per pair, so 99 values take about 30 s per round). It starts after your first send and keeps going while the pose is OFF. It resends what was sent, not values you are still editing |
+| Advanced (Settings) | Show the rows for holding objects and moving hands (☛). "☛ cm" and "deg" are the ☛ step sizes |
 | On top | Keep the app window on top |
 | 日本語 / English | UI language |
 
 Mouse: left drag to orbit, right drag to pan, wheel to zoom. Keys: Space to play, ← → to step one frame, F for the front view.
+
+### Layering a partial pose
+
+If an .anim has less than 80% of the main body muscles (not counting fingers, eyes and jaw), for example only the hands or only the upper body, opening it layers just its values on the pose you see now (the top line shows "base + layer"). Body height and rotation are copied too if the clip has them. Use the timeline to pick the layer's moment. Opening a full-body .anim clears the layers. The next start resumes with the layers as they were.
+
+### A window for another account (port)
+
+When you run two or more VRChat clients (for example `launch.exe --profile=1 --osc=9010:127.0.0.1:9011`) to pose different avatars, start `OscPoser.exe -port 9010` to get a window for that port. A shortcut with ` -port 9010` added at the end of its target is handy. The last VRM, animation and time are remembered per port (without changing the settings of a window started without `-port`).
 
 ### With other emotes
 
@@ -81,11 +93,58 @@ Mouse: left drag to orbit, right drag to pan, wheel to zoom. Keys: Space to play
 - Only 17 bits of sync are used (`OscPoser/On` Bool, `OscPoser/Idx` Int, `OscPoser/Val` Float). The pose values (93 muscles and 6 body values) are copied into unsynced parameters, one index and value pair at a time. A Parameter Driver Copy runs on everyone's side, so other people see the same pose.
 - Each pair takes about 0.125 s, so all 99 values take about 12 s. For another moment of the same animation, only the changed values are sent, so it is faster. While values are being sent, the pose changes little by little.
 - If the index changes faster than the sync interval, other people can miss values. If the pose looks wrong to a camera person, make the waits longer in "Settings" (defaults: 0.025 s after a value, 0.1 s after an index, 0.1 s after 0, and "No 0" on).
-- People who join the instance later don't receive the earlier values. Press "All" to resend them.
+- People who join the instance later don't receive the earlier values. With cycle send on, they get them in about 30 s. To hurry, press "All" to resend them.
+- Even with longer waits, a whole send occasionally does not arrive, and the pose stays as it was (the cause is unknown, and it is hard to reproduce). With cycle send on, it fixes itself after a while. To hurry, press "All" to resend everything. "Send" sends only the changed values, so values that were lost may stay wrong.
 - If you add the prefab to an avatar you uploaded before, VRChat's OSC config file for that avatar may be out of date, and the new parameters may not arrive. In that case, press Action Menu → Options → OSC → Reset Config, or delete that avatar's config file in `%USERPROFILE%\AppData\LocalLow\VRChat\VRChat\OSC\`.
 - Muscle values go up to ±4 (emotes often use values above 1). Body position goes up to ±1.5, turn and pitch up to ±180°, and roll up to ±90°.
 - The pose runs in the Action layer (Modular Avatar adds it to your avatar's Action). The layer that copies values is added to FX. It works even if your avatar uses its own FX (such as XAvatar).
 - Tested with: VRChat (PC, desktop mode), a VRoid VRM 0.x avatar converted with VRM Converter for VRChat, and an XAvatar (XWear Packager). Not tested in VR mode.
+
+<a id="advanced"></a>
+## Advanced features (holding objects, moving hands)
+
+![Advanced features](docs/images/05_advanced.jpg)
+
+Check "Advanced" in "Settings" to show three more rows. I made these to photograph avatars holding world objects when I report on worlds. Hover over a button to see what it does.
+
+### Obj (world pickups)
+
+| Button | What it does |
+|---|---|
+| Grab | Aim VRChat's crosshair at the object, then press. The app brings VRChat's window to the front (objects can only be grabbed while VRChat's window is in front), grabs, and keeps holding by re-pressing every second. Then it comes back to the OscPoser window. If VRChat's window is not found, it waits 3 s so you can click it. On desktop only the right hand can hold |
+| Release | Let go of the held object |
+| ⇈ ⇊ | Move the object away / closer with OSC MoveHoldFB. **As of 2026-11, this does not work in desktop VRChat, for unknown reasons.** It is here in case a VRChat update makes it work. For now, use the mouse wheel in VRChat's window |
+| ↻ ↺ ⤴ ⤵ ⇜ ⇝ | Turn the held object (while pressed, about 4.6° per step). Works with VRChat's window in the background |
+
+On desktop, a held object stays in front of the view, so with a pose it floats away from the hand. Watch the camera person's view and use the body sliders and object turning to put it in the hand.
+
+### ☛ Moving hands
+
+Moves one hand of the pose. The arm is decided by the wrist position, the hand rotation and the elbow swing, so you can change each separately (solved by IK).
+
+| Button | What it does |
+|---|---|
+| R / L | Hand to move |
+| ⟲ ⟳ ⤹ ⤸ ↶ ↷ | Twist, bend, and bend the wrist sideways (wrist position stays) |
+| ⥁ ⥀ | Swing the elbow away from / toward the body (wrist position and rotation stay) |
+| ✊ | Fingers: light grip / from the pose |
+| ⌂ | Put this hand back to the pose |
+| ◂ ▸ ▴ ▾ ⊙ ⊗ | Move the wrist left, right, up, down, forward, back (rotation and elbow stay) |
+| Move / Rotate / Hide | Switch the on-screen handles (below). Keys W / E / Q also work |
+
+You can also drag handles in the 3D view, like in Unity (they move the same things as the buttons).
+- At startup no hand is selected. Click the small white circle on a wrist to select that hand. Clicking elsewhere deselects.
+- **Move (W)**: red, green and blue arrows move along the feet's right, up and forward. Dragging the white ball moves along the screen; while you hold it, the wheel also moves away from / toward you along the view (1 cm per notch).
+- **Rotate (E)**: red, green and blue rings turn around the hand bone's three axes.
+- **Elbow**: a yellow ring (around the shoulder–wrist line) and a yellow ball on the elbow. Drag the ball along the ring to swing the elbow (wrist position and rotation stay). Shown in both modes.
+- Click the white ball (without moving) to switch between Move and Rotate. Dragging away from the handles orbits the view as usual.
+- If you start again with the same VRM, animation and time, the moved hands come back too.
+- Body position and tilt use the sliders (no on-screen handles).
+
+- The opposite button undoes. Out of reach, the hand goes as far as it can.
+- Changing the time or animation puts the hands back to the pose. Body offsets move the hands with the body. Layering a hands-only .anim gives its finger shape.
+- Results are sent like any other change, by Auto send or Send.
+- Step sizes (3 cm and 15° by default) are in Settings. Use a VRM with the same body as your VRChat avatar.
 
 ### Parameters (for other tools)
 
@@ -100,7 +159,7 @@ To send: set `OscPoser/Val` to a value (-1 to 1) → wait a little → set `OscP
 
 ## Earlier tools
 
-There are earlier tools for giving your avatar free poses in desktop VRChat, using OSC and other means (I learned about them after publishing OscPoser). If you want to build poses from scratch, please check them out too.
+There are earlier tools for giving your avatar free poses in desktop VRChat, using OSC and other means (I learned about them after publishing OscPoser). If you want to do more elaborate things, please check them out too.
 
 - ["ポーズ送り" (Pose Sender)](https://booth.pm/ja/items/8715878) by negilemon
 - [VRChat Desktop Pose OSC Tool (VRCDP)](https://booth.pm/ja/items/8837110) by RIOKUN

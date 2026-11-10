@@ -28,12 +28,18 @@ Full documentation: https://github.com/JRF-2018/osc_poser
   5. Press "Pose ON" to turn it off and go back to normal.
   You can add height, position, turn and tilt with the sliders at the bottom.
   Choosing another emote ends the pose.
+  After sending, the sent values keep being resent slowly (cycle send; can be turned off in "Settings").
+  Opening a hands-only or upper-body .anim layers it on the current pose.
+  For a VRChat client on another port, start "OscPoser.exe -port 9010" (handy in a shortcut).
+  "Advanced" in "Settings" shows rows for holding objects, turning them and moving hands (☛).
+  See https://github.com/JRF-2018/osc_poser/blob/main/README.en.md#advanced
 
 * Troubleshooting
   - The port must be VRChat's OSC input port (usually 9000).
   - If you added the prefab to an avatar you uploaded before, press
     Action Menu -> Options -> OSC -> Reset Config.
-  - For people who joined later, or after you reload the avatar, press "All" to resend.
+  - People who joined later get the values from cycle send in about 30 s. After you reload the
+    avatar, or to hurry, press "All" to resend.
   - If the pose looks wrong to other people, make the waits longer in "Settings".
 
 * Author
