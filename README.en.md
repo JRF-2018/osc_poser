@@ -19,7 +19,7 @@ It is also unrelated to [OSCPoser by ymchn](https://github.com/ymchn/OSCPoser), 
 - Drop a VRM and an .anim onto the app, pick a moment on the timeline, and press Send. Your avatar in VRChat takes that pose.
 - You can also add height, sideways and forward offsets, turn, and tilt. This lets you float in the air, lie down, or sit on nothing, which emotes can't do.
 - The pose is synced, so other people (such as a camera person) see the same pose. After sending, the app keeps resending the values slowly (cycle send), so missed values and the pose seen by people who join later fix themselves.
-- An .anim with only hands or only the upper body can be layered on the current pose (for example, to change just the hand shape).
+- An .anim with only some parts, such as the hands or the upper body, can be layered on the current pose (for example, to change just the hand shape).
 - Advanced features (turn on in Settings): keep holding a world object, turn the held object, and move the pose's hands freely (☛). See [below](#advanced).
 - The app shows both VRM 0.x and 1.0. The app's UI is in Japanese and English.
 

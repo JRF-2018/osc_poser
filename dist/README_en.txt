@@ -29,7 +29,7 @@ Full documentation: https://github.com/JRF-2018/osc_poser
   You can add height, position, turn and tilt with the sliders at the bottom.
   Choosing another emote ends the pose.
   After sending, the sent values keep being resent slowly (cycle send; can be turned off in "Settings").
-  Opening a hands-only or upper-body .anim layers it on the current pose.
+  Opening an .anim with only some parts, such as the hands or the upper body, layers it on the current pose.
   For a VRChat client on another port, start "OscPoser.exe -port 9010" (handy in a shortcut).
   "Advanced" in "Settings" shows rows for holding objects, turning them and moving hands (☛).
   See https://github.com/JRF-2018/osc_poser/blob/main/README.en.md#advanced
