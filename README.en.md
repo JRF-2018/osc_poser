@@ -88,6 +88,10 @@ A pose .json saved with the MCP tool `save_pose` can be dropped and opened like 
 
 When you run two or more VRChat clients (for example `launch.exe --profile=1 --osc=9010:127.0.0.1:9011`) to pose different avatars, start `OscPoser.exe -port 9010` to get a window for that port. A shortcut with ` -port 9010` added at the end of its target is handy. The last VRM, animation and time are remembered per port (without changing the settings of a window started without `-port`).
 
+To handle several avatars in one window, start `OscPoser.exe -targets 9000,9010,9020`. The screen is the same, but changing the Port field switches to that port's own VRM, pose, body, hands and sending (cycle send keeps going for the other ports too). `-target 1` picks which one to show first (from 0). From AI or scripts, add `port` to a tool or command to work on that port.
+
+`OscPoser.exe -help` (or `/?`) lists the command-line options.
+
 ### With other emotes
 
 - If you choose another emote while posing, the pose ends and that emote plays.
@@ -170,6 +174,7 @@ Start `OscPoser.exe -api` (or `-api 9331` for another port) and a control port o
 - Claude Code (Windows): `claude mcp add --transport http oscposer http://127.0.0.1:9330/mcp`
 - Clients that can only use stdin/stdout (Claude Desktop's config, Claude Code inside WSL, etc.) can use `oscposer_mcp.ps1` from the zip, a bridge that needs only Windows PowerShell: `claude mcp add oscposer -- powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\...\oscposer_mcp.ps1"`
 - Start OscPoser with `-api` before starting the AI side (adding ` -api` at the end of a shortcut's target is handy).
+- Add `port` to a tool or command to work on that port. A normal start only talks to the port shown in the window, so switch with `set_port` first, or start with `-targets`.
 - Tools: `get_state`, `open_vrm`, `open_animation`, `open_pose`, `set_time`, `send_pose`, `set_pose_on`, `set_body`, `move_hand`, `get_pose_values`, `save_pose`, `held_object`, `screenshot`, `stop_sending`, `set_port`.
 - `screenshot` captures OscPoser's window. To let the AI see VRChat itself (for example the camera person's view), combine it with another MCP that captures the screen.
 - The same port also takes plain HTTP (`GET /state`, `POST /cmd` with JSON such as `{"cmd": "anim", "path": "...", "time": 0.5}`), for scripts.

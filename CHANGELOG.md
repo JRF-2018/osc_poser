@@ -4,6 +4,8 @@
 
 - MCP server: start with `-api` (default port 9330) and an AI such as Claude can use OscPoser as MCP tools at `http://127.0.0.1:9330/mcp` (open a pose, set the time, send, on/off, body, hands, read/save the pose, held objects, and a screenshot of the view as an image). `oscposer_mcp.ps1` in the zip bridges stdio-only clients. The same port takes plain HTTP (`GET /state`, `POST /cmd`). Listens on 127.0.0.1 only; requests from browsers (Origin) and other host names are refused. / MCP のサーバー: `-api`(既定 9330)で起動すると、AI が MCP のツールとして使える(ポーズを開く・時刻・送る・ON/OFF・体・手・姿勢の読み書き・物・画面を画像で)。stdio だけの相手には zip の `oscposer_mcp.ps1`。同じ口でふつうの HTTP も。127.0.0.1 だけで、ブラウザからの要求は断る。
 - A pose .json (saved with `save_pose`) can be dropped and opened like an .anim. / ポーズの .json もドロップで開ける。
+- `-targets 9000,9010,9020`: one window keeps a VRM, pose, body, hands and sending per port; changing the Port field switches. / ポートごとに VRM・ポーズ・体・手・送信を持つ窓(ポートの欄で切り替える)。
+- `-help` (or `/?`) shows the command-line options. / `-help`(`/?` でも)で起動オプションの一覧。
 - The prefab (unitypackage) is unchanged since 0.2.0 (only the version). / prefab の中身は 0.2.0 から変わっていない(版だけ)。
 
 ## 0.3.0 (2026-11-10)

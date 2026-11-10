@@ -3,7 +3,7 @@
 // 姿勢は HumanPoseHandler.SetHumanPose で当てるので、Unity(VRChat)の筋肉の計算そのまま。
 //
 // 起動オプション(どれも省略可): -port N  -vrm FILE  -anim FILE  -time 秒  -lang ja|en  -advanced 0|1
-//   -targets 9000,9010,9020 [-labels 0,1,2] [-target i](相手を切り替える窓)  -api PORT(127.0.0.1 の HTTP で操作を受ける)
+//   -targets 9000,9010,9020 [-target i](ポートごとに VRM・ポーズなどを持つ窓)  -api [PORT](127.0.0.1 の HTTP・MCP で操作を受ける。既定 9330)  -help(/?)
 //   (試し用) -shot FILE.png  -wait 秒(撮る前)  -quit  -nosave  -settings(設定を開く)  -send(読み込んだら送る)
 //            -overlay FILE(-anim の上に重ねる .anim)  -grabtest(持つ → 5 秒 → 回す 1 回 → 離す)
 //            -ikops "R m0,10,15; R h x45; L e15; R g; R r"(☛ の操作: m 手首を動かす cm、h 軸 度 で回す、e 肘、g 握る、r 戻す)  -run 秒(その秒数で終わる)
@@ -117,6 +117,7 @@ public partial class PoserApp : MonoBehaviour
         var a = Environment.GetCommandLineArgs();
         for (int i = 1; i < a.Length; i++)
         {
+            if (a[i] == "/?" || a[i] == "/h" || a[i] == "/help") { args["help"] = "1"; continue; }   // Windows の流儀の /?
             if (!a[i].StartsWith("-")) continue;
             var key = a[i].Substring(1).ToLowerInvariant();
             args[key] = i + 1 < a.Length && !a[i + 1].StartsWith("-") ? a[++i] : "1";
@@ -140,6 +141,7 @@ public partial class PoserApp : MonoBehaviour
         font = Font.CreateDynamicFontFromOSFont(new[] { "Meiryo UI", "Meiryo", "Yu Gothic UI", "MS UI Gothic", "Segoe UI Symbol" }, 13);
         Application.targetFrameRate = 30;   // VRChat と一緒に動かすので控えめに
 
+        if (Arg("help") != null || Arg("h") != null || Arg("?") != null) { ShowHelp(); return; }
         noSave = Arg("shot") != null || Arg("nosave") != null;
         if (Arg("port") != null && int.TryParse(Arg("port"), out var pa) && pa > 0 && pa < 65536) portArg = pa;
         ParseTargets();
@@ -161,10 +163,11 @@ public partial class PoserApp : MonoBehaviour
         sender?.Dispose();
     }
 
-    void OnApplicationQuit() => SavePrefs();
+    void OnApplicationQuit() { if (!helpOnly) SavePrefs(); }
 
     IEnumerator Start()
     {
+        if (helpOnly) yield break;
         WinNative.InstallDrop();
         WinNative.SetTopmost(topmost);
         myWindow = WinNative.MyWindow();
@@ -245,6 +248,41 @@ public partial class PoserApp : MonoBehaviour
     }
 
     string Arg(string key) => args.TryGetValue(key, out var v) ? v : null;
+
+    // -help: 起動オプションを出して終わる(Unity の exe には標準出力がないので、メッセージの窓で)
+    void ShowHelp()
+    {
+        var lang = Arg("lang") ?? PlayerPrefs.GetString("lang", "");
+        english = lang == "" ? Application.systemLanguage != SystemLanguage.Japanese : lang == "en";
+        WinNative.MessageBox($"OscPoser {Version}", T(
+            "起動オプション(どれも省略できます)\n\n" +
+            "  -port N              送り先のポート(VRChat の OSC の受信ポート)。そのポート用の窓になり、最後に開いたファイルをポートごとに覚える\n" +
+            "  -targets 9000,9010   ポートごとに VRM・ポーズ・手・送信を持つ窓(ポートの欄を変えると切り替わる)\n" +
+            "  -target i            -targets のうち、最初に出す番号(0 から)\n" +
+            "  -api [PORT]          AI(MCP)・スクリプトから操作する口を開く(既定 9330。この PC の中からだけ)\n" +
+            "                       MCP: http://127.0.0.1:9330/mcp、HTTP: GET /state・POST /cmd\n" +
+            "  -vrm FILE  -anim FILE  -time 秒   開く VRM・アニメーション(.anim かポーズの .json)・時刻\n" +
+            "  -lang ja|en          画面の言語\n" +
+            "  -advanced 0|1        上級機能の行を出すか\n" +
+            "  -nosave              設定を書き込まない\n" +
+            "  -help(/? でも)      これを出す\n\n" +
+            "説明: https://github.com/JRF-2018/osc_poser",
+            "Command-line options (all optional)\n\n" +
+            "  -port N              Destination port (VRChat's OSC input port). A window for that port; the last files are remembered per port\n" +
+            "  -targets 9000,9010   Keep a VRM, pose, hands and sending per port (changing the Port field switches)\n" +
+            "  -target i            Which of -targets to show first (from 0)\n" +
+            "  -api [PORT]          Open the control port for AI (MCP) and scripts (default 9330, this PC only)\n" +
+            "                       MCP: http://127.0.0.1:9330/mcp, HTTP: GET /state, POST /cmd\n" +
+            "  -vrm FILE  -anim FILE  -time SEC   VRM, animation (.anim or pose .json) and time to open\n" +
+            "  -lang ja|en          UI language\n" +
+            "  -advanced 0|1        Show the advanced rows\n" +
+            "  -nosave              Don't write settings\n" +
+            "  -help (or /?)        Show this\n\n" +
+            "Docs: https://github.com/JRF-2018/osc_poser"));
+        helpOnly = true;
+        Application.Quit();
+    }
+    bool helpOnly;
 
     // -port N で起動したときは、最後に開いたファイルなどをポートごとに覚える(なければ、ふだんのもの)
     string PortKey(string k) => portArg != 0 ? $"{k}_p{portArg}" : k;
@@ -447,6 +485,7 @@ public partial class PoserApp : MonoBehaviour
 
     void Update()
     {
+        if (helpOnly) return;
         foreach (var f in WinNative.TakeDropped()) OpenDropped(f);
         RunApiJobs();
         UpdateSwitch();
@@ -713,6 +752,7 @@ public partial class PoserApp : MonoBehaviour
     // 解いている途中の姿勢(コルーチンは Update のあとに動く)を描かないよう、描く前に今の姿勢を当て直し、ハンドルを作る
     void LateUpdate()
     {
+        if (helpOnly) return;
         if (ikBusy) { Current(out var m, out var b); ApplyPose(m, b); }
         BuildGizmo();
         UpdateHot();
@@ -899,6 +939,7 @@ public partial class PoserApp : MonoBehaviour
 
     void OnGUI()
     {
+        if (helpOnly) return;
         Style();
         var evType = Event.current.type;
         bottomH = 252 + (showSettings ? 56 : 0) + (advanced ? 84 : 0);

@@ -78,7 +78,7 @@ public partial class PoserApp
         return d;
     }
 
-    static readonly Dictionary<string, object> PortProp = P("integer", "VRChat OSC input port of the target (9000, 9010, 9020...). Omit for the port shown in the window.");
+    static readonly Dictionary<string, object> PortProp = P("integer", "VRChat OSC input port of the target (9000, 9010, 9020...). Omit for the port shown in the window. Another port works only when OscPoser was started with -targets; otherwise use set_port first.");
 
     static Dictionary<string, object> Tool(string name, string desc, Dictionary<string, object> props, params string[] required)
     {
@@ -96,7 +96,7 @@ public partial class PoserApp
         return new List<object>
         {
             Tool("get_state", "Current state: version, targets (port, VRM, animation/pose file, time, pose ON, sending progress, holding), body offsets, status line.", Props()),
-            Tool("set_port", "Switch the window to another target port (each port keeps its own VRM, pose, hands and sending). Creates it if new.",
+            Tool("set_port", "Switch the window's port (same as typing it in the Port field). If OscPoser was started with -targets, each port keeps its own VRM, pose, hands and sending; otherwise the VRM and pose stay and only the destination changes.",
                 Props(), "port"),
             Tool("open_vrm", "Load a VRM (0.x or 1.x) for this target. Use the same model as the VRChat avatar.",
                 Props(("path", P("string", "Absolute path of the .vrm file"))), "path"),

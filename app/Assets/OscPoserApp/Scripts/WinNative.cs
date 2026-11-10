@@ -147,6 +147,9 @@ public static class WinNative
     }
 
     // 窓をいつも手前に(VRChat の上に出しておく)
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int MessageBoxW(IntPtr hWnd, string text, string caption, uint type);
+    public static void MessageBox(string caption, string text) => MessageBoxW(IntPtr.Zero, text, caption, 0x40);   // MB_ICONINFORMATION
+
     public static void SetTopmost(bool on)
     {
         var h = UnityWindow();
@@ -241,6 +244,7 @@ public static class WinNative
     public static bool BringToFront(IntPtr h) => false;
     public static IntPtr MyWindow() => IntPtr.Zero;
     public static void SetTopmost(bool on) { }
+    public static void MessageBox(string caption, string text) { Debug.Log(caption + "\n" + text); }
     public static void InstallDrop() { }
     public static void UninstallDrop() { }
     public static List<string> TakeDropped() => new List<string>();

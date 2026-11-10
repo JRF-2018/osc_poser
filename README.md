@@ -88,6 +88,10 @@ MCP の `save_pose` で保存したポーズの .json も、.anim と同じよ�
 
 VRChat を 2 つ以上起動して(例: `launch.exe --profile=1 --osc=9010:127.0.0.1:9011`)別々のアバターを動かすときは、`OscPoser.exe -port 9010` のように起動すると、そのポート用の窓になります。ショートカットを作って、リンク先の最後に ` -port 9010` を足しておくと便利です。最後に開いた VRM・アニメーション・時刻はポートごとに覚えます(`-port` を付けずに開いたときの設定には響きません)。
 
+1 つの窓で何体も扱うなら、`OscPoser.exe -targets 9000,9010,9020` のように起動します。画面は同じですが、ポートの欄を書き換えると、そのポートの VRM・ポーズ・体・手・送信(巡回送信も)に切り替わります(ほかのポートの巡回送信も続きます)。`-target 1` で最初に出すもの(0 から)を選べます。AI やスクリプトからは、ツールやコマンドに `port` を付けると、そのポートで操作できます。
+
+起動オプションの一覧は `OscPoser.exe -help`(`/?` でも)で出ます。
+
 ### ほかのエモートとの関係
 
 - 任意ポーズ中にほかのエモートを選ぶと、任意ポーズは終わり、そのエモートになります。
@@ -170,6 +174,7 @@ VRChat を 2 つ以上起動して(例: `launch.exe --profile=1 --osc=9010:127.0
 - Claude Code(Windows)なら: `claude mcp add --transport http oscposer http://127.0.0.1:9330/mcp`
 - 標準入出力でしかつなげない相手(Claude Desktop の設定や、WSL の中の Claude Code など)は、zip の中の `oscposer_mcp.ps1`(Windows の PowerShell だけで動く中継)を使います: `claude mcp add oscposer -- powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\…\oscposer_mcp.ps1"`
 - 先に OscPoser を `-api` 付きで起動してから、AI の側を起動してください(ショートカットのリンク先の最後に ` -api` を足しておくと便利です)。
+- ツールやコマンドに `port` を付けると、そのポートの相手を操作します。ふつうの起動では窓に出ているポートとしか話せないので、先に `set_port` で切り替えるか、`-targets` で起動してください。
 - ツール: `get_state`・`open_vrm`・`open_animation`・`open_pose`・`set_time`・`send_pose`・`set_pose_on`・`set_body`・`move_hand`・`get_pose_values`・`save_pose`・`held_object`・`screenshot`・`stop_sending`・`set_port`。
 - `screenshot` が撮るのは OscPoser の窓です。VRChat の画面(カメラ役の画面など)を AI に見せたいときは、画面を撮る別の MCP などと組み合わせてください。
 - 同じ口で、ふつうの HTTP でも操作できます(`GET /state`、`POST /cmd` に `{"cmd": "anim", "path": "…", "time": 0.5}` などの JSON。スクリプトから使う人向け)。

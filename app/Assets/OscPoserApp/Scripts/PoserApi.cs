@@ -193,6 +193,14 @@ public partial class PoserApp
         // "port" があれば、その相手で実行する(画面の相手は、すぐ済むコマンドなら同じフレームのうちに戻すので見えない)
         int back = -1, tmp = -1;
         var cmdName = S(j.Req, "cmd") ?? "";
+        if (!Multi && Fq(j.Req, "port") is float p1 && (int)p1 != sender.Port && cmdName != "target" && cmdName != "state")
+        {
+            // ふつうの起動では、窓のポートとしか話せない(黙って窓のポートで動かないように)
+            res["ok"] = false;
+            res["error"] = T($"ポート {(int)p1} は窓のポート({sender.Port})と違います。先に set_port で切り替えてください(-targets で起動すると、ポートごとに VRM・ポーズなどを持ちます)",
+                             $"Port {(int)p1} differs from the window's port ({sender.Port}). Switch with set_port first (start with -targets to keep a VRM, pose, etc. per port)");
+            tmp = -2;
+        }
         if (Multi && Fq(j.Req, "port") is float pp && cmdName != "target" && cmdName != "state")
         {
             tmp = SlotIndexOfPort((int)pp);
@@ -235,7 +243,14 @@ public partial class PoserApp
 
             case "target":   // {"index": n} か {"port": p}
             {
-                if (!Multi) throw new Exception("-targets で起動していません");
+                if (!Multi)   // ふつうの起動: 画面のポートの欄を書き換えたのと同じ(ポートを変え、控えを消す)
+                {
+                    int port1 = (int)Fq(q, "port").GetValueOrDefault(0);
+                    if (port1 <= 0 || port1 >= 65536) throw new Exception(T("port がありません", "port is missing"));
+                    portText = port1.ToString();
+                    ApplyPort();
+                    return null;
+                }
                 if (!q.ContainsKey("index"))   // ポートで(なければ作る。画面のポートの欄を変えたのと同じ)
                 {
                     int port = (int)Fq(q, "port").GetValueOrDefault(0);
