@@ -17,6 +17,7 @@ public class AnimClip
 
     public string PackageFile;    // .unitypackage から読んだときの、そのファイル(Path はパッケージの中の Assets/... のパス)
     public string Text;           // .unitypackage から読んだときの中身(保存に使う)
+    public bool KeepXZ;           // ポーズの .json から作ったもの: 「その場で」でも左右・前後を使う(0.4.0)
 
     public static AnimClip Load(string path) => Parse(File.ReadAllLines(path), path);
 

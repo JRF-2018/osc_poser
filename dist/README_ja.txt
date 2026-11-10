@@ -11,6 +11,7 @@ Cluster 用の OSCPoser(ymchn さん)とは、名前が似ていますが別の�
   OscPoser.exe(と、横の OscPoser_Data・MonoBleedingEdge・UnityPlayer.dll・UnityCrashHandler64.exe)
       … ポーズを見て送るアプリ。フォルダごと使ってください。
   OscPoser_{VERSION}.unitypackage … アバターに入れる prefab(Modular Avatar 用)
+  oscposer_mcp.ps1 … AI から MCP で使うときの中継(標準入出力でしかつなげない相手用。下の「AI から使う」)
 
 ■ 入れ方
   1. アバターの Unity プロジェクトに、Modular Avatar を VCC(ALCOM など)で入れる。
@@ -32,6 +33,11 @@ Cluster 用の OSCPoser(ymchn さん)とは、名前が似ていますが別の�
   別のポートの VRChat 用には「OscPoser.exe -port 9010」のように起動します(ショートカットに付けると便利)。
   「設定」の「上級機能」で、物を持つ・持った物を回す・手を動かす(☛)の行が出ます。
   説明: https://github.com/JRF-2018/osc_poser#advanced
+
+■ AI から使う(MCP)
+  OscPoser.exe -api で起動すると、AI(Claude など)が MCP のツールとして OscPoser を使えます(この PC の中からだけ)。
+  Claude Code なら: claude mcp add --transport http oscposer http://127.0.0.1:9330/mcp
+  標準入出力でしかつなげない相手は oscposer_mcp.ps1 を使います。説明: https://github.com/JRF-2018/osc_poser#mcp
 
 ■ うまくいかないとき
   ・ポートは VRChat の OSC の受信ポート(普通は 9000)にしてください。

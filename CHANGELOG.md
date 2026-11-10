@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0 (2026-11-10)
+
+- MCP server: start with `-api` (default port 9330) and an AI such as Claude can use OscPoser as MCP tools at `http://127.0.0.1:9330/mcp` (open a pose, set the time, send, on/off, body, hands, read/save the pose, held objects, and a screenshot of the view as an image). `oscposer_mcp.ps1` in the zip bridges stdio-only clients. The same port takes plain HTTP (`GET /state`, `POST /cmd`). Listens on 127.0.0.1 only; requests from browsers (Origin) and other host names are refused. / MCP のサーバー: `-api`(既定 9330)で起動すると、AI が MCP のツールとして使える(ポーズを開く・時刻・送る・ON/OFF・体・手・姿勢の読み書き・物・画面を画像で)。stdio だけの相手には zip の `oscposer_mcp.ps1`。同じ口でふつうの HTTP も。127.0.0.1 だけで、ブラウザからの要求は断る。
+- A pose .json (saved with `save_pose`) can be dropped and opened like an .anim. / ポーズの .json もドロップで開ける。
+- The prefab (unitypackage) is unchanged since 0.2.0 (only the version). / prefab の中身は 0.2.0 から変わっていない(版だけ)。
+
 ## 0.3.0 (2026-11-10)
 
 - Cycle send (on by default; Settings): after sending, the sent values keep being resent one pair at a time in shuffled order (0.3 s per pair). Missed values and the pose seen by late joiners fix themselves. It starts after the first send, keeps going while the pose is OFF, and resends the sent values, not the ones being edited. / 巡回送信(既定 ON、設定で切れる・間隔を変えられる): 送り終えたあとも、送った値を順番をばらして 1 組ずつ送り直し続ける。最初の送信のあとから始まり、ポーズ OFF の間も回す。回すのは送り終えた値で、編集中の値ではない。

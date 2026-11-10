@@ -11,6 +11,7 @@ Full documentation: https://github.com/JRF-2018/osc_poser
   OscPoser.exe (with OscPoser_Data, MonoBleedingEdge, UnityPlayer.dll and UnityCrashHandler64.exe next to it)
       ... the app that shows and sends poses. Keep the whole folder together.
   OscPoser_{VERSION}.unitypackage ... the prefab for your avatar (for Modular Avatar)
+  oscposer_mcp.ps1 ... a bridge for using it from AI over MCP (for clients that only use stdin/stdout; see "Using it from AI")
 
 * Install
   1. Install Modular Avatar into your avatar's Unity project with VCC (or ALCOM, etc.).
@@ -33,6 +34,12 @@ Full documentation: https://github.com/JRF-2018/osc_poser
   For a VRChat client on another port, start "OscPoser.exe -port 9010" (handy in a shortcut).
   "Advanced" in "Settings" shows rows for holding objects, turning them and moving hands (☛).
   See https://github.com/JRF-2018/osc_poser/blob/main/README.en.md#advanced
+
+* Using it from AI (MCP)
+  Start "OscPoser.exe -api" and an AI such as Claude can use OscPoser as MCP tools (from this PC only).
+  Claude Code: claude mcp add --transport http oscposer http://127.0.0.1:9330/mcp
+  Clients that only use stdin/stdout can use oscposer_mcp.ps1.
+  See https://github.com/JRF-2018/osc_poser/blob/main/README.en.md#mcp
 
 * Troubleshooting
   - The port must be VRChat's OSC input port (usually 9000).

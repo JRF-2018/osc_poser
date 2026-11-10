@@ -3,6 +3,7 @@
 // 姿勢は HumanPoseHandler.SetHumanPose で当てるので、Unity(VRChat)の筋肉の計算そのまま。
 //
 // 起動オプション(どれも省略可): -port N  -vrm FILE  -anim FILE  -time 秒  -lang ja|en  -advanced 0|1
+//   -targets 9000,9010,9020 [-labels 0,1,2] [-target i](相手を切り替える窓)  -api PORT(127.0.0.1 の HTTP で操作を受ける)
 //   (試し用) -shot FILE.png  -wait 秒(撮る前)  -quit  -nosave  -settings(設定を開く)  -send(読み込んだら送る)
 //            -overlay FILE(-anim の上に重ねる .anim)  -grabtest(持つ → 5 秒 → 回す 1 回 → 離す)
 //            -ikops "R m0,10,15; R h x45; L e15; R g; R r"(☛ の操作: m 手首を動かす cm、h 軸 度 で回す、e 肘、g 握る、r 戻す)  -run 秒(その秒数で終わる)
@@ -10,6 +11,7 @@
 //   最後に開いた VRM・アニメ・時刻はポートごとに覚え、ポートは設定に書き込まない(-port なしで開いたときに響かない)。
 // -shot か -nosave があると、設定(ポート・最後に開いたファイルなど)を書き込まない。
 //
+// 0.4.0: 複数の相手を 1 つの窓で(-targets、PoserTargets.cs)、外から操作する口(-api、PoserApi.cs)、ポーズの .json(PoseFile.cs)。panel.py から使う。
 // 0.3.0: 巡回送信(OscSender)、一部のポーズの .anim(手だけなど)の重ね、上級機能(物を持つ: HoldInput、手を動かす: HandIK)。
 using System;
 using System.Collections;
@@ -22,7 +24,7 @@ using UnityEngine;
 
 public partial class PoserApp : MonoBehaviour
 {
-    public const string Version = "0.3.0";
+    public const string Version = "0.4.0";
     const float TopH = 58;
 
     Camera cam;
@@ -44,6 +46,7 @@ public partial class PoserApp : MonoBehaviour
     string vrmPath;
     float modelHeight = 1.5f;
     bool loading;
+    bool starting;   // 起動して前のファイルを開いている間(API のコマンドを待たせる)
 
     // アニメーション
     AnimClip clip;
@@ -58,7 +61,7 @@ public partial class PoserApp : MonoBehaviour
     bool advanced;
     HoldInput hold;
     IntPtr myWindow;
-    readonly HandIK ik = new HandIK();
+    HandIK ik = new HandIK();
     bool ikLeft, ikBusy;
     bool ikSelected;   // 手を選んでいるか(起動したときは選んでいない。手でない所をクリックすると外れる)
     Vector3 downPos; bool downEmpty;   // 手でない所のクリック(ドラッグでない)を見分ける
@@ -139,9 +142,12 @@ public partial class PoserApp : MonoBehaviour
 
         noSave = Arg("shot") != null || Arg("nosave") != null;
         if (Arg("port") != null && int.TryParse(Arg("port"), out var pa) && pa > 0 && pa < 65536) portArg = pa;
-        sender = new OscSender();
-        hold = new HoldInput(sender);
+        ParseTargets();
+        if (Multi) { portArg = slots[0].Port; sender = slots[0].Sender; hold = slots[0].Hold; }
+        else { sender = new OscSender(); hold = new HoldInput(sender); }
         LoadPrefs();
+        CopySenderSettings();
+        StartApi();
     }
 
     void OnDestroy()
@@ -149,6 +155,8 @@ public partial class PoserApp : MonoBehaviour
         Camera.onPostRender -= DrawGrid;
         Camera.onPostRender -= DrawGizmo;
         WinNative.UninstallDrop();
+        StopApi();
+        DisposeSlots();
         handler?.Dispose();
         sender?.Dispose();
     }
@@ -162,24 +170,12 @@ public partial class PoserApp : MonoBehaviour
         myWindow = WinNative.MyWindow();
         ResetView("front");
 
-        var path = Arg("vrm") ?? PrefString("vrm");
-        if (!string.IsNullOrEmpty(path) && File.Exists(path)) LoadVrm(path);
-        else status = T("VRM(.vrm)をこの窓にドロップしてください", "Drop a VRM (.vrm) file onto this window");
-
-        var anim = Arg("anim") ?? PrefString("anim");
-        if (!string.IsNullOrEmpty(anim) && File.Exists(anim) && OpenClip(anim))
-        {
-            var t = Arg("time") != null ? float.Parse(Arg("time"), CultureInfo.InvariantCulture)
-                : Arg("anim") == null ? PlayerPrefs.GetFloat(PortKey("time"), PlayerPrefs.GetFloat("time", clip.Length)) : clip.Length;
-            time = Mathf.Clamp(t, 0, clip.Length);
-            if (Arg("anim") == null) RestoreBase();   // 重ねがけの下の姿勢も戻す
-        }
-
         showSettings = Arg("settings") != null;
-        // 前と同じ VRM・アニメ・時刻で開いたなら、動かした手(☛)も戻す
-        yield return null;
-        while (loading) yield return null;
-        RestoreIk();
+        // 前に開いた VRM・アニメ・時刻(と重ねた姿勢・動かした手)を戻す。-targets なら相手ごとに
+        starting = true;
+        if (Multi) yield return StartCoroutine(LoadAllSlots());
+        else yield return StartCoroutine(LoadRemembered(true));
+        starting = false;
         if (Arg("overlay") != null) { yield return null; while (loading) yield return null; OpenClip(Arg("overlay")); }
         if (Arg("grabtest") != null)
         {
@@ -343,11 +339,26 @@ public partial class PoserApp : MonoBehaviour
         loading = false;
     }
 
+    bool OpenClipAny(string path) => OpenClip(path);
+
     bool OpenClip(string path)
     {
+        AnimClip c0;
+        try { c0 = path.EndsWith(".json", StringComparison.OrdinalIgnoreCase) ? PoseFile.Load(path) : AnimClip.Load(path); }
+        catch (Exception e)
+        {
+            status = T("アニメーションを読めません: ", "Cannot read the animation: ") + e.Message;
+            return false;
+        }
+        return UseClip(c0);
+    }
+
+    // 読んだクリップ(.anim・ポーズの .json・API の値)を今の姿勢にする
+    bool UseClip(AnimClip c)
+    {
+        var path = c.Path;
         try
         {
-            var c = AnimClip.Load(path);
             if (c.Partial)
             {
                 // 一部のポーズ: 今の姿勢(体は足す分の前)を下に固めて、その上に重ねる
@@ -364,7 +375,7 @@ public partial class PoserApp : MonoBehaviour
             if (c.Partial)
                 status = T($"一部のポーズ(体の主な筋肉 {c.CoreHave}/{c.CoreTotal})なので、今の姿勢に重ねます: {Path.GetFileName(path)}",
                            $"Partial pose ({c.CoreHave}/{c.CoreTotal} main muscles), layered on the current pose: {Path.GetFileName(path)}");
-            if (!noSave) { PlayerPrefs.SetString(PortKey("anim"), path); PlayerPrefs.Save(); }
+            if (!noSave && File.Exists(path)) { PlayerPrefs.SetString(PortKey("anim"), path); PlayerPrefs.Save(); }
             return true;
         }
         catch (Exception e)
@@ -378,8 +389,8 @@ public partial class PoserApp : MonoBehaviour
     {
         var ext = Path.GetExtension(path).ToLowerInvariant();
         if (ext == ".vrm") LoadVrm(path);
-        else if (ext == ".anim") OpenClip(path);
-        else status = T($"開けない種類のファイルです: {Path.GetFileName(path)}(.vrm と .anim をドロップできます)", $"Unsupported file: {Path.GetFileName(path)} (drop .vrm or .anim)");
+        else if (ext == ".anim" || ext == ".json") OpenClipAny(path);
+        else status = T($"開けない種類のファイルです: {Path.GetFileName(path)}(.vrm・.anim・ポーズの .json をドロップできます)", $"Unsupported file: {Path.GetFileName(path)} (drop .vrm, .anim or a pose .json)");
     }
 
     // ---- 姿勢 ----
@@ -395,7 +406,7 @@ public partial class PoserApp : MonoBehaviour
         foreach (var kv in p.Muscles)
             muscles[Muscles.Index[kv.Key]] = Mathf.Clamp(kv.Value, -PoseParams.MuscleRange, PoseParams.MuscleRange);
         if (!partial || p.HasY) b.Y = (p.RootT.y - PoseParams.BaseY) / PoseParams.PosRange;
-        if (!inPlace && (!partial || p.HasXZ)) { b.X = p.RootT.x / PoseParams.PosRange; b.Z = p.RootT.z / PoseParams.PosRange; }
+        if ((!inPlace || clip.KeepXZ) && (!partial || p.HasXZ)) { b.X = p.RootT.x / PoseParams.PosRange; b.Z = p.RootT.z / PoseParams.PosRange; }
         if (!partial || p.HasQ)
         {
             var e = PoseParams.EulerYXZ(p.RootQ);
@@ -437,6 +448,8 @@ public partial class PoserApp : MonoBehaviour
     void Update()
     {
         foreach (var f in WinNative.TakeDropped()) OpenDropped(f);
+        RunApiJobs();
+        UpdateSwitch();
         Keys();
         Mouse();
 
@@ -721,6 +734,7 @@ public partial class PoserApp : MonoBehaviour
     {
         if (int.TryParse(portText, out var p) && p > 0 && p < 65536 && p != sender.Port)
         {
+            if (Multi) { SwitchToPort(p); return; }   // ポートごとに VRM・ポーズなどを持つ(-targets のとき)
             sender.Cancel();
             sender.Port = p;
             sender.Forget();   // 別のアバターなので、次は全部送る
@@ -740,6 +754,7 @@ public partial class PoserApp : MonoBehaviour
         ikStepCm = G(ikStepCmText, ikStepCm, 50);
         ikStepDeg = G(ikStepDegText, ikStepDeg, 180);
         WaitTexts();
+        CopySenderSettings();
         SavePrefs();
     }
 
@@ -1002,6 +1017,7 @@ public partial class PoserApp : MonoBehaviour
                 sender.ValWait = 0.025f; sender.IdxWait = 0.1f; sender.Gap = 0.1f; sender.NoZero = true;
                 sender.CycleOn = true; sender.CyclePair = 0.3f; ikStepCm = 3f; ikStepDeg = 15f;
                 WaitTexts();
+                CopySenderSettings();
                 SavePrefs();
             }
             GUILayout.EndHorizontal();
@@ -1013,7 +1029,7 @@ public partial class PoserApp : MonoBehaviour
                   "After sending, keep resending the sent values one by one. Values that were missed, and the pose seen by people who join later, fix themselves.\n" +
                   "Starts after your first send. Keeps going while the pose is OFF (so it is right the moment you turn it ON).\n" +
                   "It resends what was sent, not values you are still editing")), GUILayout.Width(W(84, 92)));
-            if (cy != sender.CycleOn) { sender.CycleOn = cy; SavePrefs(); }
+            if (cy != sender.CycleOn) { sender.CycleOn = cy; CopySenderSettings(); SavePrefs(); }
             GUILayout.Label(new GUIContent(T("間隔", "every"), T("巡回の 1 組の間隔(秒)。0.3 秒で 100 個がおよそ 30 秒で 1 周", "Seconds per value when cycling. At 0.3 s, 100 values take about 30 s")), plain, GUILayout.Width(W(28, 36)));
             cyclePairText = GUILayout.TextField(cyclePairText, GUILayout.Width(40));
             GUILayout.Space(10);

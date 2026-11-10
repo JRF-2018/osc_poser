@@ -21,6 +21,7 @@ Cluster 用の [OSCPoser(ymchn さん)](https://github.com/ymchn/OSCPoser)とは
 - 同期するので、ほかの人(カメラ役など)からも同じポーズに見えます。送り終えたあとも値を少しずつ送り直し続けるので(巡回送信)、取りこぼしや、後から入ってきた人の側のポーズも自然に直ります。
 - 手だけ・上半身だけなどの .anim は、今のポーズに重ねられます(手の形だけ変える、など)。
 - 上級機能(設定で ON): ワールドの物を持ち続ける・持った物を回す、ポーズの手を自由に動かす(☛)。[下の説明](#advanced)を見てください。
+- AI(Claude など)から MCP で操作できます(`-api`)。[下の説明](#mcp)を見てください。
 - VRM 0.x / 1.0 のどちらも exe で表示できます。exe の画面は日本語と英語です。
 
 ## 必要なもの
@@ -78,6 +79,10 @@ Cluster 用の [OSCPoser(ymchn さん)](https://github.com/ymchn/OSCPoser)とは
 ### 一部のポーズを重ねる
 
 体の主な筋肉(指・目・顎を除く)の 8 割に満たない .anim(手だけ、上半身だけ など)を開くと、そのとき見えている姿勢の上に、入っている値だけを重ねます(上の行に「元 + 重ねたもの」と出ます)。体の高さ・向きも、入っていれば写します。重ねたものの時刻は時間のバーで選べます。全身の .anim を開くと、重ねたものは消えます。次に起動したときは、重ねた状態のまま始まります。
+
+### ポーズの .json を開く
+
+MCP の `save_pose` で保存したポーズの .json も、.anim と同じようにドロップして開けます(手だけなど一部の値なら、今のポーズに重ねます)。
 
 ### 別のアカウント(ポート)用に開く
 
@@ -156,6 +161,19 @@ VRChat を 2 つ以上起動して(例: `launch.exe --profile=1 --osc=9010:127.0
 | 94 / 95 / 96 | 体の上下 / 左右 / 前後(RootT.y − 1 / x / z) | ±1.5 |
 | 97 | (欠番) | |
 | 98 / 99 / 100 | 体の向き(Yaw)/ 前傾(Pitch)/ 横傾(Roll)。Unity の YXZ の順 | ±180 / ±180 / ±90 度 |
+
+<a id="mcp"></a>
+## AI から使う(MCP)
+
+`OscPoser.exe -api` で起動すると(ポートを変えるなら `-api 9331` のように)、この PC の中からだけ届く操作の口が開き、AI(Claude など)が MCP のツールとして OscPoser を使えます。ポーズを開く・時刻を選ぶ・送る・ON/OFF・体の位置・手を動かす(☛)・姿勢を読む・保存する・物を持つ/離す/回す、と、OscPoser の画面を撮って画像で見ることができます。「ピースを開いて、右から撮って見せて」「右手を 5 cm 上げて」のように頼めます。開いただけでは送りません(送るのは `send_pose`)。
+
+- Claude Code(Windows)なら: `claude mcp add --transport http oscposer http://127.0.0.1:9330/mcp`
+- 標準入出力でしかつなげない相手(Claude Desktop の設定や、WSL の中の Claude Code など)は、zip の中の `oscposer_mcp.ps1`(Windows の PowerShell だけで動く中継)を使います: `claude mcp add oscposer -- powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\…\oscposer_mcp.ps1"`
+- 先に OscPoser を `-api` 付きで起動してから、AI の側を起動してください(ショートカットのリンク先の最後に ` -api` を足しておくと便利です)。
+- ツール: `get_state`・`open_vrm`・`open_animation`・`open_pose`・`set_time`・`send_pose`・`set_pose_on`・`set_body`・`move_hand`・`get_pose_values`・`save_pose`・`held_object`・`screenshot`・`stop_sending`・`set_port`。
+- `screenshot` が撮るのは OscPoser の窓です。VRChat の画面(カメラ役の画面など)を AI に見せたいときは、画面を撮る別の MCP などと組み合わせてください。
+- 同じ口で、ふつうの HTTP でも操作できます(`GET /state`、`POST /cmd` に `{"cmd": "anim", "path": "…", "time": 0.5}` などの JSON。スクリプトから使う人向け)。
+- 守り: 口は 127.0.0.1 だけで開き、ほかの PC からは届きません。ブラウザの Web ページからの要求(Origin の付いたもの)と、名前の違う要求は断ります。`save_pose` は .json、撮った画像は .png にだけ書きます。
 
 ## 先行するツール
 

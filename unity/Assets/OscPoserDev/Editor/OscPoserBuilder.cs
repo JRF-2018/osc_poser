@@ -27,7 +27,7 @@ namespace OscPoserDev
 {
     public static class OscPoserBuilder
     {
-        public const string Version = "0.3.0";
+        public const string Version = "0.4.0";
         const string Root = "Assets/OscPoser";
         const string ClipDir = Root + "/Clips";
         const string P = "OscPoser/";

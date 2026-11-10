@@ -21,6 +21,7 @@ It is also unrelated to [OSCPoser by ymchn](https://github.com/ymchn/OSCPoser), 
 - The pose is synced, so other people (such as a camera person) see the same pose. After sending, the app keeps resending the values slowly (cycle send), so missed values and the pose seen by people who join later fix themselves.
 - An .anim with only some parts, such as the hands or the upper body, can be layered on the current pose (for example, to change just the hand shape).
 - Advanced features (turn on in Settings): keep holding a world object, turn the held object, and move the pose's hands freely (☛). See [below](#advanced).
+- An AI such as Claude can control it over MCP (`-api`). See [below](#mcp).
 - The app shows both VRM 0.x and 1.0. The app's UI is in Japanese and English.
 
 ## Requirements
@@ -78,6 +79,10 @@ Mouse: left drag to orbit, right drag to pan, wheel to zoom. Keys: Space to play
 ### Layering a partial pose
 
 If an .anim has less than 80% of the main body muscles (not counting fingers, eyes and jaw), for example only the hands or only the upper body, opening it layers just its values on the pose you see now (the top line shows "base + layer"). Body height and rotation are copied too if the clip has them. Use the timeline to pick the layer's moment. Opening a full-body .anim clears the layers. The next start resumes with the layers as they were.
+
+### Opening a pose .json
+
+A pose .json saved with the MCP tool `save_pose` can be dropped and opened like an .anim (partial values are layered on the current pose).
 
 ### A window for another account (port)
 
@@ -156,6 +161,19 @@ To send: set `OscPoser/Val` to a value (-1 to 1) → wait a little → set `OscP
 | 94 / 95 / 96 | Body up / side / forward (RootT.y − 1 / x / z) | ±1.5 |
 | 97 | (unused) | |
 | 98 / 99 / 100 | Body yaw / pitch / roll, in Unity's YXZ order | ±180° / ±180° / ±90° |
+
+<a id="mcp"></a>
+## Using it from AI (MCP)
+
+Start `OscPoser.exe -api` (or `-api 9331` for another port) and a control port opens that only this PC can reach. An AI such as Claude can then use OscPoser as MCP tools: open a pose, pick the time, send, turn on/off, body offsets, move hands (☛), read and save the pose, grab/release/turn held objects, and take a screenshot of OscPoser's view to look at. You can ask things like "open the peace sign and show me from the right" or "raise the right hand 5 cm". Opening does not send; `send_pose` does.
+
+- Claude Code (Windows): `claude mcp add --transport http oscposer http://127.0.0.1:9330/mcp`
+- Clients that can only use stdin/stdout (Claude Desktop's config, Claude Code inside WSL, etc.) can use `oscposer_mcp.ps1` from the zip, a bridge that needs only Windows PowerShell: `claude mcp add oscposer -- powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\...\oscposer_mcp.ps1"`
+- Start OscPoser with `-api` before starting the AI side (adding ` -api` at the end of a shortcut's target is handy).
+- Tools: `get_state`, `open_vrm`, `open_animation`, `open_pose`, `set_time`, `send_pose`, `set_pose_on`, `set_body`, `move_hand`, `get_pose_values`, `save_pose`, `held_object`, `screenshot`, `stop_sending`, `set_port`.
+- `screenshot` captures OscPoser's window. To let the AI see VRChat itself (for example the camera person's view), combine it with another MCP that captures the screen.
+- The same port also takes plain HTTP (`GET /state`, `POST /cmd` with JSON such as `{"cmd": "anim", "path": "...", "time": 0.5}`), for scripts.
+- Safety: it listens on 127.0.0.1 only, so other PCs can't reach it. Requests from web pages in a browser (with an Origin header) and requests with another host name are refused. `save_pose` writes only .json, and screenshots only .png.
 
 ## Earlier tools
 

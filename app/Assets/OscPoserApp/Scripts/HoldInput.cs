@@ -6,6 +6,7 @@
 // - 回す・MoveHoldFB: 1 回 = 値 0.3 を 0.1 秒 → 0 を 0.1 秒(約 4.6 度)。押している間くり返す(すぐ離しても 1 回)。
 //   SpinHold は VRChat の窓が後ろにあっても効く。MoveHoldFB は 2026-11 のデスクトップ版では効かない(VRChat の更新で効く日のため)。
 using System;
+using System.Collections.Generic;
 using System.Threading;
 
 public class HoldInput
@@ -20,6 +21,23 @@ public class HoldInput
     Thread keepThread;
     int keepPort;
     public bool Holding => keeping;
+
+    // 0.4.0: 持った・離した回数と、持ってから回した記録(panel.py の ◎ ↩ が、持った直後からの傾きの控えを作るため)
+    public volatile int GrabSeq;
+    readonly object logGate = new object();
+    readonly List<(string axis, int n)> spinLog = new List<(string, int)>();
+    public List<(string axis, int n)> SpinLog { get { lock (logGate) return new List<(string, int)>(spinLog); } }
+    void ClearLog() { lock (logGate) spinLog.Clear(); GrabSeq++; }
+    void LogSpin(string axis, int sign)
+    {
+        if (axis == "MoveHoldFB") return;
+        lock (logGate)
+        {
+            int last = spinLog.Count - 1;
+            if (last >= 0 && spinLog[last].axis == axis && Math.Sign(spinLog[last].n) == sign) spinLog[last] = (axis, spinLog[last].n + sign);
+            else spinLog.Add((axis, sign));
+        }
+    }
     public volatile string Message;   // 画面の状態の行に出す(別のスレッドから)
 
     // 持つ。me = この窓(戻るため。メインスレッドで取っておく)
@@ -27,6 +45,7 @@ public class HoldInput
     {
         if (keeping) return;
         keeping = true;
+        ClearLog();
         keepPort = port;
         keepThread = new Thread(() => KeepLoop(port, me)) { IsBackground = true, Name = "OscPoser grab" };
         keepThread.Start();
@@ -69,6 +88,7 @@ public class HoldInput
     {
         bool was = keeping;
         keeping = false;
+        ClearLog();
         int p = was ? keepPort : port;
         new Thread(() =>
         {
@@ -83,6 +103,7 @@ public class HoldInput
 
     // 回す・MoveHoldFB(押している間)。held は押しているかどうか(メインスレッドが書き換える)
     volatile bool pulsing;
+    public bool Pulsing => pulsing;
     public volatile string HeldAxis;   // 今押しているボタンの軸(+/− 付き)。null で離した
     public void Pulse(int port, string axis, int sign)
     {
@@ -97,6 +118,7 @@ public class HoldInput
                 do
                 {
                     osc.Input(port, axis, v);
+                    LogSpin(axis, sign);
                     Thread.Sleep((int)(PulseOn * 1000));
                     osc.Input(port, axis, 0f);
                     Thread.Sleep((int)(PulseOff * 1000));
