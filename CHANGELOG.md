@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.2 (2026-11-11)
+
+- MCP/API: `export_anim` (`export`) writes the current pose (layers, hand IK and body offsets included) as a standard Unity humanoid .anim (text format, one frame, muscle curves plus RootT/RootQ). Checked: Unity imports it as a humanoid clip, and OscPoser reopens it with the same values. / 今の姿勢を Unity の人型の .anim(1 コマ)に書き出す `export_anim`。Unity で人型のクリップとして読め、OscPoser で開き直すと同じ値になることを確かめた。
+- The prefab (unitypackage) is unchanged since 0.2.0 (only the version). / prefab の中身は 0.2.0 から変わっていない(版だけ)。
+
 ## 0.4.1 (2026-11-11)
 
 - MCP/API: `set_view` (and the same options on `screenshot`): focus on a body part (whole, head, chest, hips, hands, feet), azimuth from the body's front, elevation, distance, zoom, pan. `screenshot` hides the hand handles unless `handles`, and `crop` keeps only the 3D view. / 視点を決める `set_view`(`screenshot` にも): 部分に寄る・体の正面からの角度・見下ろす角度・距離・寄る・ずらす。撮るときは手のハンドルを隠す。`crop` で 3D の所だけ。

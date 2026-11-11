@@ -18,6 +18,8 @@ public partial class PoserApp
         + "or open_pose with a few muscle values ({\"Right Hand Down-Up\": 0.5}) is put on top of the pose you see. move_hand moves a wrist by IK.\n"
         + "- Each layer freezes what was under it. There is no undo: save checkpoints with save_pose (e.g. ..._step1.json, _step2.json) "
         + "and go back by open_pose of the last good one (it is fast). save_pose includes hand IK and body offsets.\n"
+        + "- When the pose is done, export_anim writes it as a standard humanoid .anim (one frame) for Unity and other tools. "
+        + "save_pose's .json is OscPoser's own format (muscle values, with body as \"(RootT.y)\" etc.); prefer .anim when handing a pose to something else.\n"
         + "- Opening a full-body .anim/.json clears the layers and hand edits. Changing the time of a clip clears hand edits when the body pose changes.\n"
         + "- Look before and after each change: screenshot with focus (head, right_hand, hands, feet...) and two angles (e.g. azimuth 0 and 90), "
         + "because depth is hard to judge from one view. For small changes, compare get_pose_values rather than images.\n"
@@ -137,6 +139,9 @@ public partial class PoserApp
                       ("grip", P("boolean", "Toggle fingers: light grip / from the pose")), ("reset", P("boolean", "Put this hand back to the pose"))), "side"),
             Tool("get_pose_values", "Current pose values (same form as a pose .json).", Props()),
             Tool("save_pose", "Save the current pose as a pose .json.", Props(("path", P("string", "Absolute path ending in .json"))), "path"),
+            Tool("export_anim", "Write the current pose (layers, hand IK and body offsets included) as a standard Unity humanoid .anim (text format, one frame): "
+                + "muscle curves plus RootT/RootQ. Usable in Unity, VRChat emotes, other tools, and openable here again. Unlike save_pose's .json, this is a standard format.",
+                Props(("path", P("string", "Absolute path ending in .anim")), ("overwrite", P("boolean", "Replace an existing file"))), "path"),
             Tool("held_object", "Held world object (VRChat OSC input; desktop holds with the right hand only). grab = bring VRChat to front and keep holding, release, spin = turn it (about 4.6° per step).",
                 Props(("action", P("string", "grab, release or spin", new Dictionary<string, object> { ["enum"] = new List<object> { "grab", "release", "spin" } })),
                       ("axis", P("string", "for spin", new Dictionary<string, object> { ["enum"] = HoldInput.Axes.Cast<object>().ToList() })),
@@ -182,6 +187,7 @@ public partial class PoserApp
             case "move_hand": cmd = "ik"; break;
             case "get_pose_values": cmd = "values"; break;
             case "save_pose": cmd = "save"; break;
+            case "export_anim": cmd = "export"; break;
             case "held_object": cmd = S(a, "action") ?? ""; req.Remove("action"); if (cmd != "grab" && cmd != "release" && cmd != "spin") cmd = "?"; break;
             case "screenshot": cmd = "shot"; req.Remove("path"); break;
             case "set_view": cmd = "view"; break;

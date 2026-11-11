@@ -24,7 +24,7 @@ using UnityEngine;
 
 public partial class PoserApp : MonoBehaviour
 {
-    public const string Version = "0.4.1";
+    public const string Version = "0.4.2";
     const float TopH = 58;
 
     Camera cam;

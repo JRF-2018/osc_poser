@@ -381,6 +381,17 @@ public partial class PoserApp
                 return null;
             }
 
+            case "export":   // {"path": "....anim", "overwrite": false} 今の姿勢を Unity の人型の .anim(1 コマ)に
+            {
+                var p = S(q, "path") ?? throw new Exception("path がありません");
+                if (!p.EndsWith(".anim", StringComparison.OrdinalIgnoreCase)) throw new Exception("書き出せるのは .anim だけです");
+                if (File.Exists(p) && !Bq(q, "overwrite")) throw new Exception("もうあります(上書きするなら overwrite: true): " + p);
+                Current(out var m, out var b);
+                res["curves"] = AnimExport.Write(p, m, b);
+                res["path"] = p;
+                return null;
+            }
+
             case "settings":   // cycle・cyclePair・valWait・idxWait・gap・noZero・autoSend・advanced・inPlace・topmost
             {
                 if (q.ContainsKey("cycle")) sender.CycleOn = Bq(q, "cycle");
