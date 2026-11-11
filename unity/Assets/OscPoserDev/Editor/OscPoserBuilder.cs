@@ -8,7 +8,10 @@
 //   FX の「OscPoser Copy」レイヤー: Idx == i のステートに入ると、Parameter Driver の Copy で Val → i 番の値に写す
 //     (localOnly なし = 全員の側で写る)。
 //   Action の「OscPoser Pose」レイヤー: On で Direct ブレンドツリーのポーズに入る。子は筋肉 93 個と体の位置 3 個
-//     (重み 1/K、i 番だけを ±K×範囲にしたクリップを混ぜる)と、体の向きの子(重み RotW = 50)。
+//     と、体の向きの子。重みは筋肉と位置の子が 1/S ずつ(S = K × (1 + R)、合計 1/(1+R))、向きの子が R/(1+R)(R = 50)で、
+//     合計は 1。i 番のクリップは ±S×範囲、体の高さの基準は BaseY × (1+R)(平均すると元の値になる)。
+//     0.4.2 まで: 重みが 1/K と 50 で合計 51 だった。Direct ツリーは正規化しないので、ポーズで動かさない値
+//     (アバターの FX が動かす骨の位置・大きさなど)の既定値まで 51 倍になり、Sir の手の剣が遠くへ飛んで消えた。
 //   レイヤーの重みは 0 で、ポーズの間だけ VRC Animator Layer Control で 1 にする(アバター自身のエモートを邪魔しない)。
 //   番号: 1〜93 筋肉(pose_muscles.json と同じ順)、94 Y、95 X、96 Z、97 欠番、98 Yaw、99 Pitch、100 Roll。
 
@@ -27,7 +30,7 @@ namespace OscPoserDev
 {
     public static class OscPoserBuilder
     {
-        public const string Version = "0.4.2";
+        public const string Version = "0.4.3";
         const string Root = "Assets/OscPoser";
         const string ClipDir = Root + "/Clips";
         const string P = "OscPoser/";
@@ -35,7 +38,7 @@ namespace OscPoserDev
         const float MuscleRange = 4f;   // 値 ±1 で筋肉 ±4(エモートには 1 を超える筋肉がある)
         const float PosRange = 1.5f;    // 値 ±1 で体の位置 ±1.5(人型の単位)
         const float BaseY = 1f;         // 立った姿勢の RootT.y
-        const float RotWeight = 50f;    // 向きの子の重み(ほかの子の RootQ は単位なので、向きはこの子がほぼ決める)
+        const float RotWeight = 50f;    // 向きの子の重みの比(ほかの子の RootQ は単位なので、向きはこの子がほぼ決める)。重みの合計は 1 にする
         const float ClearWait = 0.6f;   // エモートを終わらせてから任意ポーズに入るまで(秒)。エモートの BlendOut が済むのを待つ
         const float YawRange = 180f, PitchRange = 180f, RollRange = 90f;
         static readonly int[] Yaws = { -180, -135, -90, -45, 0, 45, 90, 135, 180 };
@@ -157,7 +160,9 @@ namespace OscPoserDev
         public static void Build()
         {
             var values = Values();
-            var k = Muscles.Length + 3; // 重み 1/K の子の数
+            var k = Muscles.Length + 3; // 筋肉と位置の子の数
+            var sc = k * (1f + RotWeight); // 重み 1/sc の子の、値の倍率(重みの合計を 1 にする)
+            var baseY = BaseY * (1f + RotWeight); // 筋肉と位置の子の重みの合計は 1/(1+R) なので、体の高さの基準をその分上げる
             if (AssetDatabase.IsValidFolder(ClipDir)) AssetDatabase.DeleteAsset(ClipDir);
             foreach (var c in new[] { "OscPoser_FX.controller", "OscPoser_Action.controller" })
                 AssetDatabase.DeleteAsset($"{Root}/{c}");
@@ -175,16 +180,16 @@ namespace OscPoserDev
                 {
                     var name = $"M{i + 1:000}";
                     clips.Add((values[i].param,
-                        Clip($"Pose/{name}_n", new Dictionary<string, float> { [Muscles[i]] = -k * MuscleRange }, new Vector3(0, BaseY, 0), Quaternion.identity),
-                        Clip($"Pose/{name}_p", new Dictionary<string, float> { [Muscles[i]] = k * MuscleRange }, new Vector3(0, BaseY, 0), Quaternion.identity)));
+                        Clip($"Pose/{name}_n", new Dictionary<string, float> { [Muscles[i]] = -sc * MuscleRange }, new Vector3(0, baseY, 0), Quaternion.identity),
+                        Clip($"Pose/{name}_p", new Dictionary<string, float> { [Muscles[i]] = sc * MuscleRange }, new Vector3(0, baseY, 0), Quaternion.identity)));
                 }
                 var none = new Dictionary<string, float>();
-                clips.Add((P + "Y", Clip("Pose/Y_n", none, new Vector3(0, BaseY - k * PosRange, 0), Quaternion.identity),
-                                    Clip("Pose/Y_p", none, new Vector3(0, BaseY + k * PosRange, 0), Quaternion.identity)));
-                clips.Add((P + "X", Clip("Pose/X_n", none, new Vector3(-k * PosRange, BaseY, 0), Quaternion.identity),
-                                    Clip("Pose/X_p", none, new Vector3(k * PosRange, BaseY, 0), Quaternion.identity)));
-                clips.Add((P + "Z", Clip("Pose/Z_n", none, new Vector3(0, BaseY, -k * PosRange), Quaternion.identity),
-                                    Clip("Pose/Z_p", none, new Vector3(0, BaseY, k * PosRange), Quaternion.identity)));
+                clips.Add((P + "Y", Clip("Pose/Y_n", none, new Vector3(0, baseY - sc * PosRange, 0), Quaternion.identity),
+                                    Clip("Pose/Y_p", none, new Vector3(0, baseY + sc * PosRange, 0), Quaternion.identity)));
+                clips.Add((P + "X", Clip("Pose/X_n", none, new Vector3(-sc * PosRange, baseY, 0), Quaternion.identity),
+                                    Clip("Pose/X_p", none, new Vector3(sc * PosRange, baseY, 0), Quaternion.identity)));
+                clips.Add((P + "Z", Clip("Pose/Z_n", none, new Vector3(0, baseY, -sc * PosRange), Quaternion.identity),
+                                    Clip("Pose/Z_p", none, new Vector3(0, baseY, sc * PosRange), Quaternion.identity)));
                 foreach (var y in Yaws)
                 foreach (var p in Pitches)
                 foreach (var r in Rolls)
@@ -196,7 +201,7 @@ namespace OscPoserDev
             }
 
             var fx = MakeFx(values);
-            var action = MakeAction(clips, rot, WaitClip(), k);
+            var action = MakeAction(clips, rot, WaitClip(), sc);
             MakePrefab(fx, action, values);
             WriteTable(values);
             AssetDatabase.SaveAssets();
@@ -311,15 +316,15 @@ namespace OscPoserDev
         // ---- Action: ポーズ ----
 
         static AnimatorController MakeAction(List<(string param, AnimationClip lo, AnimationClip hi)> clips,
-            Dictionary<(int, int, int), AnimationClip> rot, AnimationClip wait, int k)
+            Dictionary<(int, int, int), AnimationClip> rot, AnimationClip wait, float sc)
         {
             var path = $"{Root}/OscPoser_Action.controller";
             var c = AnimatorController.CreateAnimatorControllerAtPath(path);
             c.RemoveLayer(0);
             c.AddParameter(P + "On", AnimatorControllerParameterType.Bool);
             c.AddParameter("VRCEmote", AnimatorControllerParameterType.Int);   // VRChat の標準のエモート(ほかのエモートに譲るため)
-            c.AddParameter(new AnimatorControllerParameter { name = P + "Norm", type = AnimatorControllerParameterType.Float, defaultFloat = 1f / k });
-            c.AddParameter(new AnimatorControllerParameter { name = P + "RotW", type = AnimatorControllerParameterType.Float, defaultFloat = RotWeight });
+            c.AddParameter(new AnimatorControllerParameter { name = P + "Norm", type = AnimatorControllerParameterType.Float, defaultFloat = 1f / sc });
+            c.AddParameter(new AnimatorControllerParameter { name = P + "RotW", type = AnimatorControllerParameterType.Float, defaultFloat = RotWeight / (1f + RotWeight) });
             foreach (var (param, _, _) in clips) c.AddParameter(param, AnimatorControllerParameterType.Float);
             foreach (var n in new[] { "Yaw", "Pitch", "Roll" }) c.AddParameter(P + n, AnimatorControllerParameterType.Float);
 

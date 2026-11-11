@@ -20,6 +20,14 @@ Full documentation: https://github.com/JRF-2018/osc_poser
   4. Upload as usual.
   5. In VRChat, turn on Action Menu -> Options -> OSC.
 
+* Updating from an earlier version (the prefab changed in 0.4.3)
+  The prefab from 0.2.0-0.4.2 keeps working with the 0.4.3 app. You don't have to re-upload.
+  But with the 0.4.3 prefab, your avatar's own items are handled better (items whose position or scale
+  your FX animates, such as a sword that moves between the back and the hand, no longer disappear
+  or fly away while the pose is ON).
+  To update: import the new unitypackage into Unity (importing over the old one replaces it),
+  and re-upload your avatar.
+
 * Usage
   1. In VRChat, wear the avatar with the prefab.
   2. Start OscPoser.exe and drop a VRM (with the same body as your avatar) and an .anim

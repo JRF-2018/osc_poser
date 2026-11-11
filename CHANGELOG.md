@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.3 (2026-11-12)
+
+- Prefab: the weights of the pose's Direct blend tree now add up to 1 (they added up to 51). Unity does not normalize a Direct blend tree, so values the pose does not animate were multiplied too: items whose position or scale the avatar's FX animates (for example, a sword that moves between the back and the hand) disappeared or flew far away while the pose was ON. The clips are scaled so that poses, body position and rotation work the same. / prefab: ポーズの Direct ブレンドツリーの重みの合計を 1 に(前は 51)。Direct ツリーは正規化しないので、ポーズで動かさない値まで 51 倍になり、アバターの FX が位置や大きさを動かす物(背中と手で出し入れする剣など)が、任意ポーズの間だけ消えたり遠くへ飛んだりしていた。クリップの値を合わせたので、ポーズ・体の位置・向きの効き方は同じ。
+- The prefab from 0.2.0–0.4.2 keeps working with this app (same value numbers and units); updating it is optional. To update, import the new unitypackage over the old one and re-upload. / 0.2.0〜0.4.2 の prefab のままでも動く(更新は任意)。更新するときは、新しい unitypackage を上から入れて上げ直す。
+- The app is unchanged except for the version. / exe は版だけ。
+
 ## 0.4.2 (2026-11-11)
 
 - MCP/API: `export_anim` (`export`) writes the current pose (layers, hand IK and body offsets included) as a standard Unity humanoid .anim (text format, one frame, muscle curves plus RootT/RootQ). Checked: Unity imports it as a humanoid clip, and OscPoser reopens it with the same values. / 今の姿勢を Unity の人型の .anim(1 コマ)に書き出す `export_anim`。Unity で人型のクリップとして読め、OscPoser で開き直すと同じ値になることを確かめた。
