@@ -30,7 +30,7 @@ namespace OscPoserDev
 {
     public static class OscPoserBuilder
     {
-        public const string Version = "0.4.3";
+        public const string Version = "0.4.4";
         const string Root = "Assets/OscPoser";
         const string ClipDir = Root + "/Clips";
         const string P = "OscPoser/";
@@ -436,6 +436,37 @@ namespace OscPoserDev
             Go(yielded, idle, off);
 
             c.AddLayer(new AnimatorControllerLayer { name = "OscPoser Pose", stateMachine = sm, defaultWeight = 0f });
+
+            // 0.4.4: 見張りの層「OscPoser Keep」(重み 0。状態の behaviour は重みに関係なく動く)。
+            // On で標準のエモートが出ていない(VRCEmote == 0)間、1 秒ごとに「このポーズの層と Action の重みを 1・全身をアニメーションに・移動を止める」を掛け直す。
+            // ほかのエモートの部品(EmoteBox など、VRCEmote を使わないもの)が終わるとき、その BlendOut が Action の重みを 0 にしてトラッキングを戻し、
+            // 任意ポーズが消えていた(Pose の状態のまま、重みだけ 0)。最初の 1 秒は待つ(Clear のあとの標準のエモートの BlendOut とぶつけない)。
+            var km = NewStateMachine(c, "OscPoser Keep");
+            var kIdle = km.AddState("Idle", new Vector3(300, 0));
+            var kWait = km.AddState("Wait", new Vector3(300, 120));
+            var k1 = km.AddState("Keep1", new Vector3(600, 120));
+            var k2 = km.AddState("Keep2", new Vector3(600, 240));
+            foreach (var s in new[] { kIdle, kWait, k1, k2 }) s.writeDefaultValues = false;
+            foreach (var s in new[] { kWait, k1, k2 }) s.motion = wait;   // Wait は 1 秒
+            km.defaultState = kIdle;
+            foreach (var s in new[] { k1, k2 })
+            {
+                LayerWeight(s, 1f, 0f);
+                var pc = s.AddStateMachineBehaviour<VRCPlayableLayerControl>();
+                pc.layer = VRC_PlayableLayerControl.BlendableLayer.Action;
+                pc.goalWeight = 1f;
+                pc.blendDuration = 0.25f;
+                Tracking(s, VRC_AnimatorTrackingControl.TrackingType.Animation);
+                s.AddStateMachineBehaviour<VRCAnimatorLocomotionControl>().disableLocomotion = true;
+            }
+            Go(kIdle, kWait, on, noEmote);
+            foreach (var (from, to) in new[] { (kWait, k1), (k1, k2), (k2, k1) })
+            {
+                var tr = Go(from, to, on, noEmote);
+                tr.hasExitTime = true; tr.exitTime = 1f;
+            }
+            foreach (var s in new[] { kWait, k1, k2 }) { Go(s, kIdle, off); Go(s, kIdle, emote); }
+            c.AddLayer(new AnimatorControllerLayer { name = "OscPoser Keep", stateMachine = km, defaultWeight = 0f });
             EditorUtility.SetDirty(c);
             return c;
         }

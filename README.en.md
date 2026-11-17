@@ -47,10 +47,12 @@ Download the zip from [Releases](https://github.com/JRF-2018/osc_poser/releases)
 
 5. In VRChat, open the Action Menu → Options → OSC and turn it on.
 
-### Updating from an earlier version (the prefab changed in 0.4.3)
+### Updating from an earlier version (the prefab changed in 0.4.3 and 0.4.4)
 
-- **The prefab from 0.2.0–0.4.2 keeps working with the 0.4.3 app** (the value numbers and units are the same). You don't have to re-upload.
-- But with the 0.4.3 prefab, **your avatar's own items are handled better**. With the earlier prefab, items whose position or scale your avatar's FX animates (for example, a sword that moves between the back and the hand) could disappear or fly far away while the pose was ON, because the weights of the pose's blend tree did not add up to 1. 0.4.3 makes them add up to 1 (poses, body position and rotation work the same). Items toggled only on/off were fine with the earlier prefab too.
+- **The prefab from 0.2.0–0.4.3 keeps working with the 0.4.4 app** (the value numbers and units are the same). You don't have to re-upload.
+- But a newer prefab improves these:
+  - 0.4.3: **your avatar's own items are handled better**. With the earlier prefab, items whose position or scale your avatar's FX animates (for example, a sword that moves between the back and the hand) could disappear or fly far away while the pose was ON, because the weights of the pose's blend tree did not add up to 1. 0.4.3 makes them add up to 1 (poses, body position and rotation work the same). Items toggled only on/off were fine with the earlier prefab too.
+  - 0.4.4: **works together with other emote add-ons (such as Necocoya's EmoteBox)**. Emote add-ons that don't use VRChat's standard emote number (VRCEmote) set the Action weight to 0 when their emote ends, and the pose disappeared afterwards (until you turned it OFF and ON). With 0.4.4 the pose is re-applied every second while it is ON, so it comes back in about a second.
 - To update: import the new unitypackage into Unity as usual (importing over the old one replaces it), and re-upload your avatar. The prefab already under your avatar becomes the new version as it is.
 
 ## Usage
