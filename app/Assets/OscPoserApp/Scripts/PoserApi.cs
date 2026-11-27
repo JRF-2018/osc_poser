@@ -345,7 +345,7 @@ public partial class PoserApp
                 return Spin(axis, sign, count);
             }
 
-            case "ik":   // {"side": "R"|"L", "move": [右, 上, 前](cm), "rot": [["x", 度], ...], "elbow": 度, "grip": true, "reset": true}
+            case "ik":   // {"side": "R"|"L", "move": [右, 上, 前](cm), "rot": [["x", 度], ...], "elbow": 度, "grip": true, "reset": true, "natural": true}
             {
                 if (handler == null) throw new Exception("VRM がありません");
                 if (ikBusy) throw new Exception("手の計算の途中です");
@@ -361,6 +361,7 @@ public partial class PoserApp
                             if (r.Count == 2) o.Rot.Add((Convert.ToString(r[0])[0], Convert.ToSingle(r[1])));
                     if (Fq(q, "elbow") is float el) o.Elbow += el;
                     if (Bq(q, "grip")) o.Grip++;
+                    if (Bq(q, "natural")) o.Natural = true;   // ほかの操作のあとに
                 });
                 return Wait(null, () => !ikBusy, res);
             }

@@ -24,7 +24,7 @@ using UnityEngine;
 
 public partial class PoserApp : MonoBehaviour
 {
-    public const string Version = "0.4.4";
+    public const string Version = "0.4.5";
     const float TopH = 58;
 
     Camera cam;
@@ -73,7 +73,7 @@ public partial class PoserApp : MonoBehaviour
 
     class IkOp
     {
-        public bool Left, Reset;
+        public bool Left, Reset, Natural;   // Natural: 自然にする(肘の玉のクリック・✧)
         public Vector3 MoveCm;
         public readonly List<(char ax, float deg)> Rot = new List<(char, float)>();
         public float Elbow;
@@ -207,6 +207,7 @@ public partial class PoserApp : MonoBehaviour
                         case 'e': IkPress(o => o.Elbow += float.Parse(nums, CultureInfo.InvariantCulture)); break;
                         case 'g': IkPress(o => o.Grip++); break;
                         case 'r': IkPress(o => o.Reset = true); break;
+                        case 'n': IkPress(o => o.Natural = true); break;
                     }
                     yield return null;
                     while (ikBusy) yield return null;
@@ -608,7 +609,7 @@ public partial class PoserApp : MonoBehaviour
         {
             var s = ik.Get(left);
             var nums = new List<float> { s.HasState && s.Arm != null ? 1 : 0, s.Grip ? 1 : 0, s.Pos.x, s.Pos.y, s.Pos.z, s.Rot.x, s.Rot.y, s.Rot.z, s.Rot.w, s.Swivel };
-            nums.AddRange(s.Arm ?? new float[HandIK.ArmMuscles.Length]);
+            nums.AddRange(s.Arm ?? new float[HandIK.ArmIdx(false).Length]);
             parts.Add(string.Join(",", nums.Select(F)));
         }
         PlayerPrefs.SetString(PortKey("ikSig"), IkSig());
@@ -633,7 +634,7 @@ public partial class PoserApp : MonoBehaviour
                 s.Pos = new Vector3(v[2], v[3], v[4]);
                 s.Rot = new Quaternion(v[5], v[6], v[7], v[8]);
                 s.Swivel = v[9];
-                if (s.HasState) s.Arm = v.Skip(10).Take(HandIK.ArmMuscles.Length).ToArray();
+                if (s.HasState) s.Arm = v.Skip(10).Take(HandIK.ArmIdx(false).Length).ToArray();   // 前の版は腕の 7 つだけ
             }
             ikRef = null;
             if (ik.Active) status = T("前に動かした手(☛)を戻しました", "Restored the hands you moved last time (☛)");
@@ -668,7 +669,7 @@ public partial class PoserApp : MonoBehaviour
             if (op.Reset) { sd.Reset(); status = T($"{hand}を元のポーズに戻しました", $"{hand}: back to the pose"); }
             if (op.Grip % 2 == 1) { sd.Grip = !sd.Grip; status = T($"{hand}の指: {(sd.Grip ? "軽く握る" : "元のポーズ")}", $"{hand} fingers: {(sd.Grip ? "light grip" : "from the pose")}"); }
             if (op.MoveCm == Vector3.zero && op.Rot.Count == 0 && op.Elbow == 0 && op.MoveAbs == Vector3.zero
-                && Quaternion.Angle(op.RawRot, Quaternion.identity) < 1e-3f && op.SwivelRaw == 0) continue;
+                && Quaternion.Angle(op.RawRot, Quaternion.identity) < 1e-3f && op.SwivelRaw == 0 && !op.Natural) continue;
 
             // 肘のボタン: 向き(胸から遠く/近く)を決めるのは続けて押す最初の 1 回だけ。同じボタンを続けて押す間は同じ向きに
             // 回し続け(いちばん遠い所も越える)、反対のボタンなら逆向きに。ほかの操作をはさむと決め直す
@@ -694,7 +695,10 @@ public partial class PoserApp : MonoBehaviour
             var req = new HandIK.Request { Left = op.Left, Move = op.MoveCm / 100f, MoveAbs = op.MoveAbs, LocalRot = lq, SwivelDelta = swDelta, Away = away };
             status = T("手の形を計算しています…", "Solving the arm…");
             HandIK.Result r = null;
-            yield return StartCoroutine(ik.Solve(vrm.GetComponent<Animator>(), handler, m, bodyPos, bodyRot, req, x => r = x));
+            bool moved = op.MoveCm != Vector3.zero || op.Rot.Count > 0 || op.Elbow != 0 || op.MoveAbs != Vector3.zero
+                         || Quaternion.Angle(op.RawRot, Quaternion.identity) >= 1e-3f || op.SwivelRaw != 0;
+            if (moved || !op.Natural)
+                yield return StartCoroutine(ik.Solve(vrm.GetComponent<Animator>(), handler, m, bodyPos, bodyRot, req, x => r = x));
             string note = null;
             if (op.Elbow != 0)
             {
@@ -716,6 +720,21 @@ public partial class PoserApp : MonoBehaviour
                 }
             }
             else { sd.ElbowBtn = sd.ElbowDir = 0; }
+            if (op.Natural)
+            {
+                // 自然にする(肘の玉のクリック・✧): 手首の位置・手の向きはそのまま、肘の回り具合はなるべくそのまま。
+                // ひねり(1 回転ねじれたものも)と肩(鎖骨)を整える。ほかの操作と一緒なら、その結果から
+                var keepSd = (sd.HasState, sd.Pos, sd.Rot, sd.Swivel, sd.Arm);
+                var mN = m;
+                if (r != null) { sd.HasState = true; sd.Pos = r.Pos; sd.Rot = r.Rot; sd.Swivel = r.Swivel; sd.Arm = r.Arm; Current(out mN, out _); }
+                status = T("腕を自然な形に整えています…", "Making the arm natural…");
+                yield return StartCoroutine(ik.Solve(vrm.GetComponent<Animator>(), handler, mN, bodyPos, bodyRot,
+                    new HandIK.Request { Left = op.Left, Natural = true }, x => r = x));
+                (sd.HasState, sd.Pos, sd.Rot, sd.Swivel, sd.Arm) = keepSd;
+                sd.ElbowBtn = sd.ElbowDir = 0;
+                note = T($"{hand}: 自然にしました(肘の回り {r.SwivelChange:+0;-0;0} 度" + (r.Reach > 0.01f || r.RotError > 3f ? $"・手首のずれ {r.Reach * 100:0.0} cm・向きのずれ {r.RotError:0} 度)" : ")"),
+                         $"{hand}: made natural (elbow swing {r.SwivelChange:+0;-0;0}°" + (r.Reach > 0.01f || r.RotError > 3f ? $", wrist off by {r.Reach * 100:0.0} cm, rotation by {r.RotError:0}°)" : ")"));
+            }
             Underlying(out var now, out _);
             if (gen != ikGen || Differs(now, snap, Enumerable.Range(0, now.Length)))
             {
@@ -1210,6 +1229,12 @@ public partial class PoserApp : MonoBehaviour
         GUI.backgroundColor = old;
         if (GUILayout.Button(new GUIContent("⌂", T("この手を元のポーズに戻す", "Put this hand back to the pose")), icon, GUILayout.Width(B), GUILayout.Height(22)))
             IkPress(o => { o.Reset = true; o.MoveCm = Vector3.zero; o.Rot.Clear(); o.Elbow = 0; o.Grip = 0; });
+        if (GUILayout.Button(new GUIContent("✧", T("腕を自然にする(3D の画面の肘の黄色い玉をクリックしても同じ)。手首の位置と手の向きはそのまま、肘の回り具合もなるべくそのままで、\n" +
+                "腕・前腕のひねり(1 回転ねじれたものも)と肩(鎖骨)を整える。変にねじれたとき・肩が不自然なときに",
+                "Make the arm natural (same as clicking the yellow elbow ball in the 3D view). Keeps the wrist position and hand rotation, and mostly the elbow swing;\n" +
+                "re-picks the arm and forearm twist (unwinds full turns) and sets the shoulder (clavicle). Use it when the arm looks twisted or the shoulder looks off")),
+                icon, GUILayout.Width(B), GUILayout.Height(22)))
+            IkPress(o => o.Natural = true);
         GUILayout.EndHorizontal();
         GUILayout.BeginHorizontal();
         GUILayout.Label(GUIContent.none, plain, GUILayout.Width(W(20, 28)));
@@ -1222,9 +1247,9 @@ public partial class PoserApp : MonoBehaviour
                 IkPress(o => o.MoveCm += mv * ikStepCm);
         GUILayout.Space(8);
         var gTip = T("画面のハンドル(Unity のように): 移動(W)= 矢印で足元の向きに・白い玉で画面に沿って、回転(E)= 手の骨の 3 つの軸の輪、隠す(Q)。\n" +
-                     "黄色い玉と輪は肘: 玉を輪に沿ってドラッグすると肘が回る(手首はそのまま)。もう一方の手首の小さな輪をクリックすると手が替わる",
+                     "黄色い玉と輪は肘: 玉を輪に沿ってドラッグすると肘が回る(手首はそのまま)。玉をクリックすると腕を自然にする(✧ と同じ)。もう一方の手首の小さな輪をクリックすると手が替わる",
                      "On-screen handles (like Unity): Move (W) = arrows along the feet's axes, white ball along the screen; Rotate (E) = rings around the hand bone's axes; Hide (Q).\n" +
-                     "The yellow ball and ring are the elbow: drag the ball along the ring to swing the elbow (wrist stays). Click the small circle on the other wrist to switch hands");
+                     "The yellow ball and ring are the elbow: drag the ball along the ring to swing the elbow (wrist stays); click the ball to make the arm natural (same as ✧). Click the small circle on the other wrist to switch hands");
         foreach (var (mode, label) in new[] { (GizmoMode.Move, T("移動", "Move")), (GizmoMode.Rotate, T("回転", "Rotate")), (GizmoMode.Off, T("隠す", "Hide")) })
         {
             GUI.backgroundColor = gizmo == mode ? new Color(1f, 0.75f, 0.4f) : old;

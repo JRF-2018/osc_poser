@@ -20,8 +20,8 @@ Full documentation: https://github.com/JRF-2018/osc_poser
   4. Upload as usual.
   5. In VRChat, turn on Action Menu -> Options -> OSC.
 
-* Updating from an earlier version (the prefab changed in 0.4.3 and 0.4.4)
-  The prefab from 0.2.0-0.4.3 keeps working with the 0.4.4 app. You don't have to re-upload.
+* Updating from an earlier version (the prefab changed in 0.4.3 and 0.4.4; 0.4.5 changes only the app)
+  The prefab from 0.2.0-0.4.3 keeps working with the 0.4.5 app. You don't have to re-upload.
   But with a newer prefab:
   - 0.4.3: your avatar's own items are handled better (items whose position or scale your FX
     animates, such as a sword that moves between the back and the hand, no longer disappear

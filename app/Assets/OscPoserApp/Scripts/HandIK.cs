@@ -6,6 +6,8 @@
 // これを筋肉の値の空間で、Unity のヒューマノイドそのもの(SetHumanPose と骨の位置)を使って解く(レーベンバーグ・マーカート法)。
 // 状態は体(腰の位置と体の向き)からの相対で持つ(体の位置・傾きを変えても、手は体についていく)。動かす向きは足元の向き(右・上・前)。
 // 肘の回り具合: 肩と手首を結ぶ線の回りに、肘が「体の真後ろ」から何度回っているか(右腕で + は外へ。左腕は写したように)。
+// 肩(鎖骨)の 2 つの筋肉もこの手の値として持つが、ふだんは下のポーズのまま。「自然にする」(肘の玉のクリック・✧)でだけ、
+// 手首の位置・手の向きを保ち、肘の回り具合もなるべく保ったまま、肩とひねりを解き直す(筋肉が ±1 に収まる形、ひねりは少なく、肩は腕の上げ方に合わせて)。
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -17,6 +19,8 @@ public class HandIK
 {
     public static readonly string[] ArmMuscles = { "Arm Down-Up", "Arm Front-Back", "Arm Twist In-Out", "Forearm Stretch",
                                                    "Forearm Twist In-Out", "Hand Down-Up", "Hand In-Out" };
+    // 肩(鎖骨)。ふだんの計算では動かさない(下のポーズのまま)。肘の玉のクリック(自然にする)でだけ動かす
+    public static readonly string[] ShoulderMuscles = { "Shoulder Down-Up", "Shoulder Front-Back" };
     // 軽く握った指(Stretched は −1 で深く曲がる)
     static readonly Dictionary<string, float> GripFingers = new Dictionary<string, float>
     {
@@ -33,7 +37,7 @@ public class HandIK
         public Vector3 Pos;             // 手首(体から。体の向きで)
         public Quaternion Rot;          // 手の向き(体の向きで)
         public float Swivel;            // 肘の回り具合(度)
-        public float[] Arm;             // 腕の 7 つの筋肉
+        public float[] Arm;             // 腕の 7 つの筋肉 + 肩の 2 つ(前の版で覚えたものは 7 つだけ)
         public bool Grip;               // 指を軽く握る形に
         public int ElbowBtn, ElbowDir;  // 肘のボタンを続けて押している間の向き(0 = 決め直す)
         public void Reset() { HasState = false; Arm = null; Grip = false; ElbowBtn = ElbowDir = 0; }
@@ -44,7 +48,8 @@ public class HandIK
     public Side Get(bool left) => left ? L : R;
     public bool Active => R.Active || L.Active;
 
-    public static int[] ArmIdx(bool left) => ArmMuscles.Select(n => Muscles.Index[$"{(left ? "Left" : "Right")} {n}"]).ToArray();
+    // 腕の 7 つ + 肩の 2 つ
+    public static int[] ArmIdx(bool left) => ArmMuscles.Concat(ShoulderMuscles).Select(n => Muscles.Index[$"{(left ? "Left" : "Right")} {n}"]).ToArray();
     public static int[] FingerIdx(bool left) => GripFingers.Keys.Select(n => Muscles.Index[$"{(left ? "Left" : "Right")}Hand.{n}"]).ToArray();
     static float[] GripValues => GripFingers.Values.ToArray();
 
@@ -57,7 +62,7 @@ public class HandIK
             if (s.HasState && s.Arm != null)
             {
                 var idx = ArmIdx(left);
-                for (int k = 0; k < idx.Length; k++) m[idx[k]] = s.Arm[k];
+                for (int k = 0; k < idx.Length && k < s.Arm.Length; k++) m[idx[k]] = s.Arm[k];
             }
             if (s.Grip)
             {
@@ -78,6 +83,9 @@ public class HandIK
         public Quaternion LocalRot = Quaternion.identity;   // 手の骨の向きで右から掛ける
         public float SwivelDelta;         // 度
         public float Away;                // 度。+ で肘を胸から離す、− で寄せる
+        // 自然にする(肘の玉のクリック): 手首の位置・手の向きはそのまま、肘の回り具合はなるべくそのまま。
+        // 腕・前腕のひねり(1 回転ねじれたものも)と肩(鎖骨)を動かして、筋肉が自然な範囲(±1)に収まり、肩は腕の上げ方に合う形に
+        public bool Natural;
     }
 
     public class Result
@@ -86,6 +94,7 @@ public class HandIK
         public Vector3 Pos; public Quaternion Rot; public float Swivel;
         public float Reach, RotError, Scale;
         public float ElbowMoved = -1, ElbowDir;
+        public float SwivelChange;        // 自然にしたとき、肘の回り具合が変わった分(度)
         public string Note;
     }
 
@@ -183,12 +192,41 @@ public class HandIK
         }
         float tSw = swivel + dSwivel;
 
+        bool nat = req.Natural;
         float Wp = 30f, Wr = 60f, Ws = 6f;
+        int nArm = ArmMuscles.Length, nAll = idx.Length;
         int kStretch = Array.IndexOf(ArmMuscles, "Forearm Stretch");
         int kTwist = Array.IndexOf(ArmMuscles, "Arm Twist In-Out");
+        int kFTwist = Array.IndexOf(ArmMuscles, "Forearm Twist In-Out");
+        int kHandDU = Array.IndexOf(ArmMuscles, "Hand Down-Up"), kHandIO = Array.IndexOf(ArmMuscles, "Hand In-Out");
+        int kShD = nArm, kShF = nArm + 1;
+        // 動かす筋肉: ふだんは腕の 7 つ、自然にするときは肩も
+        int[] free = Enumerable.Range(0, nat ? nAll : nArm).ToArray();
         float[] lo = x.Select(_ => -4f).ToArray();
         float[] hi = x.Select(_ => 4f).ToArray();
         hi[kStretch] = Mathf.Max(1f, x[kStretch]);   // 肘は逆には反らせない
+        if (nat) { lo[kShD] = lo[kShF] = -1f; hi[kShD] = hi[kShF] = 1f; }
+
+        // 肩の筋肉の向き(+ で肩が上がる・前に出るか)を確かめる。アバターの骨の付き方によらないように
+        float sgnD = 1f, sgnF = 1f;
+        if (nat)
+        {
+            Apply(x); var u0 = frameInv * (ua.position - hips.position);
+            var xd = (float[])x.Clone(); xd[kShD] += 0.3f; Apply(xd); var ud = frameInv * (ua.position - hips.position);
+            var xf = (float[])x.Clone(); xf[kShF] += 0.3f; Apply(xf); var uf = frameInv * (ua.position - hips.position);
+            sgnD = ud.y >= u0.y ? 1f : -1f;
+            sgnF = uf.z >= u0.z ? 1f : -1f;
+            Apply(x);
+        }
+        // 腕の上げ方に合う肩: 上腕が真下から 45 度より上がると少しずつ上がり(真上で 0.8)、腕を前に出すと少し前へ
+        void ShoulderTarget(out float td, out float tf)
+        {
+            var dl = frameInv * (la.position - ua.position).normalized;
+            float abd = Mathf.Asin(Mathf.Clamp(dl.y, -1f, 1f)) * Mathf.Rad2Deg + 90f;
+            td = sgnD * Mathf.Clamp01((abd - 45f) / 150f) * 0.8f;
+            tf = sgnF * Mathf.Clamp(dl.z * 0.4f, -0.4f, 0.4f);
+        }
+        const float Wb = 4f, Wtie = 0.3f, Wsh = 1.5f;
         float[] Res(float[] v)
         {
             Apply(v);
@@ -196,7 +234,17 @@ public class HandIK
             var dr = RotVec(tRot * Quaternion.Inverse(Rq())) * Wr;
             float sw = S(out var bend);
             float ds = Mathf.DeltaAngle(tSw, sw) * Mathf.Deg2Rad * Ws * Mathf.Clamp01(bend * 3f);
-            return new[] { dp.x, dp.y, dp.z, dr.x, dr.y, dr.z, ds };
+            if (!nat) return new[] { dp.x, dp.y, dp.z, dr.x, dr.y, dr.z, ds };
+            var r = new List<float> { dp.x, dp.y, dp.z, dr.x, dr.y, dr.z, ds };
+            // 自然な範囲(±1)を越えた分。腕の上下・前後と肘の曲げは手首の位置でほぼ決まるので弱く
+            // (強くすると、届かない形のときに手首と肘の回り具合をずらしてしまう。2026-11-28 JRF の報告)
+            for (int k = 0; k < nAll; k++)
+                r.Add(Mathf.Max(0f, Mathf.Abs(v[k]) - 1f) * (k <= 1 || k == kStretch ? Wb * 0.25f : Wb));
+            r.Add(v[kTwist] * Wtie); r.Add(v[kFTwist] * Wtie);                                   // ひねりは少ないほうへ
+            r.Add(v[kHandDU] * Wtie * 0.7f); r.Add(v[kHandIO] * Wtie * 0.7f);
+            ShoulderTarget(out var td, out var tf);
+            r.Add((v[kShD] - td) * Wsh); r.Add((v[kShF] - tf) * Wsh);
+            return r.ToArray();
         }
         float Norm2(float[] r) => r.Sum(t => t * t);
 
@@ -207,17 +255,17 @@ public class HandIK
             var xc = (float[])x0.Clone();
             float lambda = 1e-3f;
             var rc = Res(xc);
-            int n = xc.Length;
+            int n = free.Length, nr = rc.Length;
             for (int it = 0; it < 150 && Norm2(rc) > 1e-10f; it++)
             {
                 if (watch.ElapsedMilliseconds > 25) { yield return null; watch.Restart(); }
-                var J = new float[7, n];
+                var J = new float[nr, n];
                 const float h = 0.004f;
                 for (int k = 0; k < n; k++)
                 {
-                    var xp = (float[])xc.Clone(); xp[k] += h;
+                    var xp = (float[])xc.Clone(); xp[free[k]] += h;
                     var rp = Res(xp);
-                    for (int i = 0; i < 7; i++) J[i, k] = (rp[i] - rc[i]) / h;
+                    for (int i = 0; i < nr; i++) J[i, k] = (rp[i] - rc[i]) / h;
                 }
                 var A = new double[n, n];
                 var b = new double[n];
@@ -226,11 +274,11 @@ public class HandIK
                     for (int q = 0; q < n; q++)
                     {
                         double sum = 0;
-                        for (int i = 0; i < 7; i++) sum += J[i, p] * J[i, q];
+                        for (int i = 0; i < nr; i++) sum += J[i, p] * J[i, q];
                         A[p, q] = sum;
                     }
                     double bs = 0;
-                    for (int i = 0; i < 7; i++) bs -= J[i, p] * rc[i];
+                    for (int i = 0; i < nr; i++) bs -= J[i, p] * rc[i];
                     b[p] = bs;
                 }
                 bool improved = false;
@@ -240,9 +288,15 @@ public class HandIK
                     for (int p = 0; p < n; p++) Al[p, p] += lambda * (1 + A[p, p]);
                     var dx = SolveLinear(Al, (double[])b.Clone());
                     if (dx == null) { lambda *= 10; continue; }
-                    var xn = xc.Select((v, k) => Mathf.Clamp(v + (float)dx[k], lo[k], hi[k])).ToArray();
+                    var xn = (float[])xc.Clone();
+                    for (int k = 0; k < n; k++) { int j = free[k]; xn[j] = Mathf.Clamp(xc[j] + (float)dx[k], lo[j], hi[j]); }
                     var rn = Res(xn);
-                    if (Norm2(rn) < Norm2(rc)) { xc = xn; rc = rn; lambda = Mathf.Max(1e-6f, lambda * 0.3f); improved = true; }
+                    float before = Norm2(rc), after = Norm2(rn);
+                    if (after < before)
+                    {
+                        xc = xn; rc = rn; lambda = Mathf.Max(1e-6f, lambda * 0.3f); improved = true;
+                        if (before - after < 1e-7f * (1f + before)) it = 1000;   // ほとんど変わらない(自然にするときは 0 にならない)
+                    }
                     else lambda *= 10;
                 }
                 if (!improved) break;
@@ -252,7 +306,19 @@ public class HandIK
 
         // 解き始め: 今の腕と、肘を曲げた腕 × 上腕のひねり(伸びきった腕からだと行き詰まる・肘の向きの違う解に落ちるので)
         var starts = new List<float[]> { x.Select((v, k) => Mathf.Clamp(v, lo[k], hi[k])).ToArray() };
-        foreach (var bendTo in new[] { -0.2f, -0.6f })
+        if (nat)
+        {
+            // 自然にする: ひねりを自然な値から解き直す(1 回転ねじれた解から抜けるため)。手首はまっすぐ、肩は 0 から
+            foreach (var at in new[] { -0.6f, 0f, 0.6f })
+                foreach (var ft in new[] { -0.6f, 0f, 0.6f })
+                {
+                    var st = (float[])starts[0].Clone();
+                    st[kTwist] = at; st[kFTwist] = ft; st[kHandDU] = 0; st[kHandIO] = 0; st[kShD] = 0; st[kShF] = 0;
+                    if (st[kStretch] > -0.15f) st[kStretch] = -0.3f;   // 伸びきった腕からだと行き詰まる
+                    starts.Add(st);
+                }
+        }
+        else foreach (var bendTo in new[] { -0.2f, -0.6f })
         {
             if (x[kStretch] <= bendTo + 0.1f) continue;
             foreach (var tw in new[] { float.NaN, -1f, -0.5f, 0f, 0.5f, 1f })
@@ -266,10 +332,11 @@ public class HandIK
         foreach (var st in starts)
         {
             // 強い重みで、と、弱い重み(位置を主に)で解いてから強い重みで詰めたもの、のよいほう
-            Wp = 30f; Wr = 60f; Ws = 6f;
+            Wp = nat ? 300f : 30f; Wr = 60f; Ws = nat ? 20f : 6f;   // 自然にするときは、手首と肘の回り具合を強く保つ
             var e = Lm(st); while (e.MoveNext()) yield return e.Current;
             float nd = Norm2(solvedRes);
             if (nd < bestN - 1e-6f) { best = solved; bestN = nd; }
+            if (nat) continue;   // 自然にするときは解き始めが多いので、強い重みだけ
             Wp = 10f; Wr = 2f; Ws = 0.5f;
             e = Lm(st); while (e.MoveNext()) yield return e.Current;
             var xa = solved;
@@ -291,6 +358,11 @@ public class HandIK
         res.Pos = unreachable && res.Reach > 0.01f ? gotP : tPos;   // 本当に届かないときだけ、届いた所を新しい状態に
         res.Rot = tRot;                                             // 手の向きは目標を覚えたまま
         res.Swivel = !unreachable && bendNow > 0.15f && Mathf.Abs(Mathf.DeltaAngle(tSw, gotS)) > 5f ? gotS : tSw;
+        if (nat)
+        {
+            if (bendNow > 0.15f) res.Swivel = gotS;   // 自然にした形を新しい状態に
+            res.SwivelChange = bendNow > 0.15f ? Mathf.DeltaAngle(tSw, gotS) : 0f;
+        }
         res.Arm = best;
         done(res);
     }

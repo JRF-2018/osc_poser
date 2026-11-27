@@ -33,6 +33,7 @@ public partial class PoserApp
     Vector3 gizmoLastMouse;
     Handle dragH;
     bool centerClick;   // 白い玉を押して、まだ動かしていない(このまま離せばクリック)
+    bool elbowClick;    // 肘の玉を押して、まだ動かしていない(このまま離せば「自然にする」)
     Vector3 gizmoDown;   // つかんでいるハンドル(一覧は毎フレーム作り直すので、物を覚える)
 
     void InitGizmo()
@@ -74,19 +75,23 @@ public partial class PoserApp
         Color R = new Color(0.95f, 0.3f, 0.3f), G = new Color(0.4f, 0.9f, 0.35f), B = new Color(0.35f, 0.55f, 1f);
 
 
-        // 肘: 肩と手首を結ぶ線の回りの輪と、肘の玉
+        // 肘: 肩と手首を結ぶ線の回りの輪と、肘の玉。腕を伸ばすと肘は線に近づくので、輪は画面でおよそ 35 画素より小さくしない
+        // (玉は肘の向きの、輪の上に。腕がまっすぐで肘の向きが決まらないときは体の後ろ向き)
         var s = ua.position; var e = la.position;
         var a = (o - s).normalized;
         var c = s + a * Vector3.Dot(e - s, a);
         float r = (e - c).magnitude;
-        if (r > 1e-3f)
+        Vector3 uDir = r > 1e-4f ? (e - c) / r : Vector3.ProjectOnPlane(-root.forward, a).normalized;
+        if (uDir.sqrMagnitude < 0.5f) uDir = Vector3.ProjectOnPlane(-root.up, a).normalized;
+        float rDisp = Mathf.Max(r, GizmoSize(c) * 0.5f);
         {
-            var u = (e - c) / r; var v = Vector3.Cross(a, u);
-            var ring = Ring(c, u * r, v * r);
+            var u = uDir; var v = Vector3.Cross(a, u);
+            var ring = Ring(c, u * rDisp, v * rDisp);
             if (ring != null) handles.Add(ring.Item1.Fill(new Handle { Kind = HKind.Elbow, Closed = true, Width = 2f, Col = new Color(1f, 0.85f, 0.3f, 0.6f), Origin = c, Axis = a, World = ring.Item2 }));
         }
-        if (ScreenOk(e, out var ep))
-            handles.Add(new Handle { Kind = HKind.Elbow, Pts = { ep }, Radius = 8f, Col = new Color(1f, 0.85f, 0.3f), Origin = c, Axis = a });
+        var eb = c + uDir * rDisp;
+        if (ScreenOk(eb, out var ep))
+            handles.Add(new Handle { Kind = HKind.Elbow, Pts = { ep }, Radius = 8f, Col = new Color(1f, 0.85f, 0.3f), Origin = c, Axis = a, World = new List<Vector3> { eb } });
 
         if (gizmo == GizmoMode.Move)
         {
@@ -182,18 +187,17 @@ public partial class PoserApp
         if (h.Kind == HKind.Other) { ikLeft = h.Left; ikSelected = true; return true; }
         activeHandle = i;
         centerClick = h.Kind == HKind.Center;
+        elbowClick = h.Kind == HKind.Elbow && h.Radius > 0;
         gizmoDown = mouse;
         dragH = h;
         gizmoLastMouse = mouse;
         gizmoGrab = h.Origin;
-        if (h.World != null)   // 輪: つかんだ所にいちばん近い点
+        if (h.World != null)   // 輪: つかんだ所にいちばん近い点(肘の玉は、輪の上の玉の所)
         {
             int k = 0; float bd = float.MaxValue;
             for (int j = 0; j < h.Pts.Count; j++) { float d = (h.Pts[j] - (Vector2)mouse).sqrMagnitude; if (d < bd) { bd = d; k = j; } }
             gizmoGrab = h.World[k];
         }
-        else if (h.Kind == HKind.Elbow)
-            gizmoGrab = vrm.GetComponent<Animator>().GetBoneTransform(ikLeft ? HumanBodyBones.LeftLowerArm : HumanBodyBones.RightLowerArm).position;
         return true;
     }
 
@@ -205,7 +209,8 @@ public partial class PoserApp
         if (!held || !GizmoShown)
         {
             if (centerClick && held == false) gizmo = gizmo == GizmoMode.Move ? GizmoMode.Rotate : GizmoMode.Move;   // 白い玉のクリック
-            centerClick = false;
+            if (elbowClick && held == false) IkPress(o => o.Natural = true);   // 肘の玉のクリック: 腕を自然にする
+            centerClick = false; elbowClick = false;
             activeHandle = -1; dragH = null;
             return false;
         }
@@ -218,10 +223,10 @@ public partial class PoserApp
             var ri = Quaternion.Inverse(vrm.transform.rotation);
             IkPress(o => o.MoveAbs += ri * dz);
         }
-        if (centerClick)
+        if (centerClick || elbowClick)
         {
             if ((mouse - gizmoDown).magnitude <= 3f) return true;   // まだクリックかもしれない
-            centerClick = false;
+            centerClick = elbowClick = false;
             gizmoLastMouse = gizmoDown;   // 押した所から動かす
         }
         var md = (Vector2)(mouse - gizmoLastMouse);

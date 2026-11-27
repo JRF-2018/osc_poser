@@ -47,9 +47,9 @@ Download the zip from [Releases](https://github.com/JRF-2018/osc_poser/releases)
 
 5. In VRChat, open the Action Menu → Options → OSC and turn it on.
 
-### Updating from an earlier version (the prefab changed in 0.4.3 and 0.4.4)
+### Updating from an earlier version (the prefab changed in 0.4.3 and 0.4.4; 0.4.5 changes only the app)
 
-- **The prefab from 0.2.0–0.4.3 keeps working with the 0.4.4 app** (the value numbers and units are the same). You don't have to re-upload.
+- **The prefab from 0.2.0–0.4.3 keeps working with the 0.4.5 app** (the value numbers and units are the same). You don't have to re-upload.
 - But a newer prefab improves these:
   - 0.4.3: **your avatar's own items are handled better**. With the earlier prefab, items whose position or scale your avatar's FX animates (for example, a sword that moves between the back and the hand) could disappear or fly far away while the pose was ON, because the weights of the pose's blend tree did not add up to 1. 0.4.3 makes them add up to 1 (poses, body position and rotation work the same). Items toggled only on/off were fine with the earlier prefab too.
   - 0.4.4: **works together with other emote add-ons (such as Necocoya's EmoteBox)**. Emote add-ons that don't use VRChat's standard emote number (VRCEmote) set the Action weight to 0 when their emote ends, and the pose disappeared afterwards (until you turned it OFF and ON). With 0.4.4 the pose is re-applied every second while it is ON, so it comes back in about a second.
@@ -146,6 +146,7 @@ Moves one hand of the pose. The arm is decided by the wrist position, the hand r
 | ⥁ ⥀ | Swing the elbow away from / toward the body (wrist position and rotation stay) |
 | ✊ | Fingers: light grip / from the pose |
 | ⌂ | Put this hand back to the pose |
+| ✧ | Make the arm natural (same as clicking the elbow ball, below) |
 | ◂ ▸ ▴ ▾ ⊙ ⊗ | Move the wrist left, right, up, down, forward, back (rotation and elbow stay) |
 | Move / Rotate / Hide | Switch the on-screen handles (below). Keys W / E / Q also work |
 
@@ -153,7 +154,8 @@ You can also drag handles in the 3D view, like in Unity (they move the same thin
 - At startup no hand is selected. Click the small white circle on a wrist to select that hand. Clicking elsewhere deselects.
 - **Move (W)**: red, green and blue arrows move along the feet's right, up and forward. Dragging the white ball moves along the screen; while you hold it, the wheel also moves away from / toward you along the view (1 cm per notch).
 - **Rotate (E)**: red, green and blue rings turn around the hand bone's three axes.
-- **Elbow**: a yellow ring (around the shoulder–wrist line) and a yellow ball on the elbow. Drag the ball along the ring to swing the elbow (wrist position and rotation stay). Shown in both modes.
+- **Elbow**: a yellow ring (around the shoulder–wrist line) and a yellow ball on the elbow. Drag the ball along the ring to swing the elbow (wrist position and rotation stay). Shown in both modes. The ring stays big enough to grab even when the arm is stretched out.
+- **Make the arm natural**: click the yellow elbow ball (without moving) or press ✧. Keeping the wrist position and hand rotation, and mostly the elbow swing, it re-picks the arm and forearm twist (also unwinding a full extra turn) and sets the shoulder (clavicle) to match how high the arm is raised. Use it when a held object leaves the arm oddly twisted or the shoulder looks off. Normal hand moves leave the shoulder as in the pose. If no natural shape exists (for example the elbow folded past its limit), little changes.
 - Click the white ball (without moving) to switch between Move and Rotate. Dragging away from the handles orbits the view as usual.
 - If you start again with the same VRM, animation and time, the moved hands come back too.
 - Body position and tilt use the sliders (no on-screen handles).
@@ -191,6 +193,7 @@ Start `OscPoser.exe -api` (or `-api 9331` for another port) and a control port o
   - When the pose is done, `export_anim` writes it as a Unity humanoid .anim (text format, one frame), usable in Unity, emotes and other tools, and openable in OscPoser. `save_pose`'s .json is OscPoser's own format, so hand poses to other tools as .anim.
   - Opening a full-body .anim or .json clears the layers and hand edits. Changing the clip's time also clears hand edits when the body pose changes.
   - Look before and after each change: `focus` on the part and shoot from two angles (`azimuth` 0 and 90, say), since depth is hard to judge from one view. For small changes, compare `get_pose_values` rather than images.
+  - If an arm looks twisted, `move_hand` with `natural: true` re-picks the twist and shoulder while keeping the wrist position and hand rotation.
   - Muscle values are Unity muscle units (usually -1..1, up to ±4). Which way a muscle moves depends on the rest of the arm; try a small step and look.
   - Nothing reaches VRChat until `send_pose`.
 - `screenshot` captures OscPoser's window. To let the AI see VRChat itself (for example the camera person's view), combine it with another MCP that captures the screen.

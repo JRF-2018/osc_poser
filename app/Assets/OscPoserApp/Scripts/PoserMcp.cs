@@ -23,6 +23,7 @@ public partial class PoserApp
         + "- Opening a full-body .anim/.json clears the layers and hand edits. Changing the time of a clip clears hand edits when the body pose changes.\n"
         + "- Look before and after each change: screenshot with focus (head, right_hand, hands, feet...) and two angles (e.g. azimuth 0 and 90), "
         + "because depth is hard to judge from one view. For small changes, compare get_pose_values rather than images.\n"
+        + "- If an arm looks oddly twisted (e.g. after many wrist turns), move_hand with natural=true re-picks the twist and shoulder, keeping the wrist position and hand rotation.\n"
         + "- Muscle values are Unity muscle units (usually -1..1, up to ±4). Which way a muscle moves depends on the rest of the arm; try a small step and look.\n"
         + "- Nothing reaches VRChat until send_pose. Use all=true after the avatar was reloaded in VRChat.";
 
@@ -136,7 +137,9 @@ public partial class PoserApp
                       ("rot", P("array", "Wrist turns in the hand bone's axes: [[\"x\", deg], ...]. x = twist, z = bend palm/back, y = bend sideways",
                           new Dictionary<string, object> { ["items"] = new Dictionary<string, object> { ["type"] = "array" } })),
                       ("elbow", num("Swing the elbow: + away from the body, - toward it (degrees)")),
-                      ("grip", P("boolean", "Toggle fingers: light grip / from the pose")), ("reset", P("boolean", "Put this hand back to the pose"))), "side"),
+                      ("grip", P("boolean", "Toggle fingers: light grip / from the pose")), ("reset", P("boolean", "Put this hand back to the pose")),
+                      ("natural", P("boolean", "After the other changes, make the arm natural: keep the wrist position and hand rotation (and mostly the elbow swing), "
+                          + "re-pick the arm/forearm twist (unwinds full turns) and set the shoulder (clavicle). Use when the arm looks twisted"))), "side"),
             Tool("get_pose_values", "Current pose values (same form as a pose .json).", Props()),
             Tool("save_pose", "Save the current pose as a pose .json.", Props(("path", P("string", "Absolute path ending in .json"))), "path"),
             Tool("export_anim", "Write the current pose (layers, hand IK and body offsets included) as a standard Unity humanoid .anim (text format, one frame): "

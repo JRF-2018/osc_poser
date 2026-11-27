@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.5 (2026-11-28)
+
+- Advanced ☛: click the yellow elbow ball (or ✧) to make the arm natural. It keeps the wrist position and hand rotation, and mostly the elbow swing, and re-picks the arm/forearm twist (unwinding a full extra turn) and the shoulder (clavicle). `natural` for the API `ik` and MCP `move_hand`. / 上級機能 ☛: 肘の黄色い玉をクリック(または ✧)で「腕を自然にする」。手首の位置・手の向きはそのまま、肘の回り具合もなるべくそのままで、腕・前腕のひねり(1 回転ねじれたものも)と肩(鎖骨)を整える。API の `ik` と MCP の `move_hand` に `natural`。
+- The elbow ring no longer gets too small to grab when the arm is stretched out. / 肘の輪は、腕を伸ばしても画面で小さくなりすぎないように(玉は輪の上に)。
+- The prefab is the same as 0.4.4 (only the version). / prefab は 0.4.4 と同じ(版だけ)。
+
 ## 0.4.4 (2026-11-17)
 
 - Prefab: while the pose is ON (and no standard VRChat emote is playing), a new layer "OscPoser Keep" re-applies the Action weight, full-body animation tracking and the locomotion lock every second. Other emote add-ons that do not use VRCEmote (for example EmoteBox) set the Action weight to 0 when their emote ends, and the pose disappeared until it was turned OFF and ON again. Now the pose comes back within about a second. / prefab: 任意ポーズが ON の間(標準のエモートが出ていないとき)、新しい層「OscPoser Keep」が 1 秒ごとに Action の重み・全身のアニメーション・移動の停止を掛け直す。VRCEmote を使わないほかのエモートの部品(EmoteBox など)は、エモートの終わりに Action の重みを 0 にするので、任意ポーズが OFF・ON し直すまで消えていた。1 秒ほどで戻るようになった。
